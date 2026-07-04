@@ -18,6 +18,7 @@ import Dashboard from './components/Dashboard';
 import TransactionForm from './components/TransactionForm';
 import TransactionList from './components/TransactionList';
 import GoogleDriveModal from './components/GoogleDriveModal';
+import MarketTicker from './components/MarketTicker';
 import { Sparkles, Info, ArrowUpRight, ShieldCheck, Download, Trash2, Cloud } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -48,6 +49,18 @@ export default function App() {
   }, [darkMode]);
 
   const toggleDarkMode = () => setDarkMode(prev => !prev);
+
+  // Ocultar/mostrar montos (como el "ojito" de las apps de bancos), con persistencia
+  const [hideBalances, setHideBalances] = useState<boolean>(() => {
+    const saved = localStorage.getItem('hideBalances');
+    return saved === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hideBalances', hideBalances ? 'true' : 'false');
+  }, [hideBalances]);
+
+  const toggleHideBalances = () => setHideBalances(prev => !prev);
 
   // Set default selected month/year to today's month/year
   const today = new Date();
@@ -348,6 +361,9 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans antialiased text-slate-800 dark:text-slate-100 transition-colors duration-200">
       
+      {/* Cinta de precios de mercado (dólar y cripto) */}
+      <MarketTicker />
+
       {/* Header component */}
       <Header
         user={user}
@@ -358,6 +374,8 @@ export default function App() {
         onLogout={handleLogout}
         darkMode={darkMode}
         onToggleDarkMode={toggleDarkMode}
+        hideBalances={hideBalances}
+        onToggleHideBalances={toggleHideBalances}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -412,7 +430,7 @@ export default function App() {
         </div>
 
         {/* Dashboard displays all calculated totals */}
-        <Dashboard summary={summary} />
+        <Dashboard summary={summary} hideBalances={hideBalances} />
 
         {/* Two column layout: Form & List */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -450,6 +468,7 @@ export default function App() {
               transactions={activeMonthTransactions}
               onDeleteTransaction={handleDeleteTransaction}
               loading={transactionsLoading}
+              hideBalances={hideBalances}
             />
           </div>
 
