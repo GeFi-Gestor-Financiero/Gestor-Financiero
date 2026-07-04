@@ -1,20 +1,17 @@
 import { useEffect, useState } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 
-// Cada item de la cinta: una etiqueta, un valor formateado, y si subió o bajó
 interface TickerItem {
   id: string;
   label: string;
   value: string;
-  changePercent: number; // positivo = subió, negativo = bajó
+  changePercent: number;
 }
 
-// Formatea un número como precio en pesos argentinos
 function formatARS(n: number): string {
   return `$${n.toLocaleString('es-AR', { maximumFractionDigits: 0 })}`;
 }
 
-// Formatea un número como precio en dólares
 function formatUSD(n: number): string {
   return `US$${n.toLocaleString('en-US', { maximumFractionDigits: n < 10 ? 4 : 2 })}`;
 }
@@ -44,19 +41,53 @@ async function fetchDolares(): Promise<TickerItem[]> {
 }
 
 async function fetchCriptos(): Promise<TickerItem[]> {
+  const nombres: Record<string, string> = { BTCUSDT: 'Bitcoin', ETHUSDT: 'Ethereum' };
   try {
+    const results = await Promise.all(
+      Object.keys(nombres).map(async (symbol) => {
+        const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
+        if (!res.ok) return null;
+        const data = await res.json();
+        return {
+          id: `cripto-${symbol}`,
+          label: nombres[symbol],
+          value: formatUSD(parseFloat(data.lastPrice)),
+          changePercent: parseFloat(data.priceChangePercent),
+        } as TickerItem;
+      })
+    );
+    return results.filter((r): r is TickerItem => r !== null);
+  } catch {
+    return [];
+  }
+}
+
+async function fetchAcciones(): Promise<TickerItem[]> {
+  const apiKey = import.meta.env.VITE_TWELVEDATA_API_KEY;
+  if (!apiKey) return [];
+
+  try {
+    const symbols = 'SPY,QQQ,YPF';
     const res = await fetch(
-      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true'
+      `https://api.twelvedata.com/quote?symbol=${symbols}&apikey=${apiKey}`
     );
     if (!res.ok) return [];
     const data = await res.json();
-    const nombres: Record<string, string> = { bitcoin: 'Bitcoin', ethereum: 'Ethereum' };
-    return Object.keys(nombres).map((key) => ({
-      id: `cripto-${key}`,
-      label: nombres[key],
-      value: formatUSD(data[key]?.usd ?? 0),
-      changePercent: data[key]?.usd_24h_change ?? 0,
-    }));
+
+    const nombres: Record<string, string> = {
+      SPY: 'S&P 500',
+      QQQ: 'Nasdaq',
+      YPF: 'YPF',
+    };
+
+    return Object.keys(nombres)
+      .filter((symbol) => data[symbol] && !data[symbol].code)
+      .map((symbol) => ({
+        id: `accion-${symbol}`,
+        label: nombres[symbol],
+        value: formatUSD(parseFloat(data[symbol].close)),
+        changePercent: parseFloat(data[symbol].percent_change ?? '0'),
+      }));
   } catch {
     return [];
   }
@@ -70,15 +101,18 @@ export default function MarketTicker() {
     let active = true;
 
     async function loadAll() {
-      const [dolares, criptos] = await Promise.all([fetchDolares(), fetchCriptos()]);
+      const [dolares, criptos, acciones] = await Promise.all([
+        fetchDolares(),
+        fetchCriptos(),
+        fetchAcciones(),
+      ]);
       if (active) {
-        setItems([...dolares, ...criptos]);
+        setItems([...dolares, ...criptos, ...acciones]);
         setLoading(false);
       }
     }
 
     loadAll();
-    // Actualiza los valores cada 5 minutos
     const interval = setInterval(loadAll, 5 * 60 * 1000);
     return () => {
       active = false;
@@ -90,7 +124,6 @@ export default function MarketTicker() {
     return null;
   }
 
-  // Duplicamos la lista para que el scroll sea infinito y no se note el "salto"
   const loopItems = [...items, ...items];
 
   return (
