@@ -7,9 +7,10 @@ interface TransactionListProps {
   transactions: Transaction[];
   onDeleteTransaction: (id: string) => Promise<void>;
   loading: boolean;
+  hideBalances?: boolean;
 }
 
-export default function TransactionList({ transactions, onDeleteTransaction, loading }: TransactionListProps) {
+export default function TransactionList({ transactions, onDeleteTransaction, loading, hideBalances = false }: TransactionListProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
@@ -193,8 +194,12 @@ export default function TransactionList({ transactions, onDeleteTransaction, loa
                                   ? 'text-rose-600 dark:text-rose-400' 
                                   : 'text-amber-600 dark:text-amber-400'
                             }>
-                              {t.categoria === 'Gasto' || t.categoria === 'Inversion' || t.categoria === 'Ef-' ? '-' : '+'}
-                              {formatCurrency(t.monto)}
+                              {hideBalances ? '••••' : (
+                                <>
+                                  {t.categoria === 'Gasto' || t.categoria === 'Inversion' || t.categoria === 'Ef-' ? '-' : '+'}
+                                  {formatCurrency(t.monto)}
+                                </>
+                              )}
                             </span>
                           </td>
                           <td className="px-4 py-2.5 whitespace-nowrap text-center">
