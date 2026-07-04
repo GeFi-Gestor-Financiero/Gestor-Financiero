@@ -4,9 +4,10 @@ import { motion } from 'motion/react';
 
 interface DashboardProps {
   summary: MonthSummary;
+  hideBalances?: boolean;
 }
 
-export default function Dashboard({ summary }: DashboardProps) {
+export default function Dashboard({ summary, hideBalances = false }: DashboardProps) {
   // Format currency in Spanish AR style
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('es-AR', {
@@ -109,8 +110,8 @@ export default function Dashboard({ summary }: DashboardProps) {
             <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${card.titleClass}`}>
               {card.title}
             </p>
-            <p className={`text-lg font-bold font-mono tracking-tight leading-tight ${card.valueClass}`}>
-              {formatCurrency(card.value)}
+            <p className={`text-lg font-bold font-mono tracking-tight leading-tight select-none ${card.valueClass}`}>
+              {hideBalances ? '••••••' : formatCurrency(card.value)}
             </p>
           </div>
         </motion.div>
