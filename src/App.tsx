@@ -21,6 +21,9 @@ import GoogleDriveModal from './components/GoogleDriveModal';
 import MarketTicker from './components/MarketTicker';
 import ConversorRapido from './components/ConversorRapido';
 import CalculadoraCuotas from './components/CalculadoraCuotas';
+import Grafico3D from './components/Grafico3D';
+import CalculadoraImpuestos from './components/CalculadoraImpuestos';
+import ErrorBoundary from './components/ErrorBoundary';
 import { Sparkles, Info, ArrowUpRight, ShieldCheck, Download, Trash2, Cloud } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -143,10 +146,11 @@ export default function App() {
   // 4. Calculations based on active selectedMonth and selectedYear
   const calculateSummary = (): MonthSummary => {
     let plataInicial = 0;
-    let ingresos = 0;
+    let ingresoReal = 0; // Solo categoría "Ingreso" de este mes (para el cálculo interno del dinero en cuenta)
+    let ingresos = 0; // Ingreso + Efectivo ingresado de este mes (esto es lo que se MUESTRA en el tablero)
     let gastos = 0;
     let inversiones = 0;
-    let efectivo = 0;
+    let efectivo = 0; // Efectivo ingresado/retirado SOLO de este mes (no acumulado)
 
     transactions.forEach((t) => {
       const { year, month } = getMonthYearFromDate(t.fecha);
@@ -155,31 +159,34 @@ export default function App() {
       const esAnterior = (year < selectedYear) || (year === selectedYear && month < selectedMonth);
       // Check if transaction date is in the CURRENT selected month/year
       const esEsteMes = (year === selectedYear && month === selectedMonth);
-      // Check if transaction date is up to the current selected month/year
-      const esHastaEsteMes = (year < selectedYear) || (year === selectedYear && month <= selectedMonth);
 
-      // Plata inicial calculations (Income - Expense - Investment from previous periods)
+      // Plata inicial: acumula Ingreso, Gasto, Inversion Y Efectivo de TODOS los meses anteriores.
+      // Así, la plata que te quedó en efectivo un mes se traslada al mes siguiente, igual que la de cuenta.
       if (esAnterior) {
         if (t.categoria === 'Ingreso') plataInicial += t.monto;
         if (t.categoria === 'Gasto') plataInicial -= t.monto;
         if (t.categoria === 'Inversion') plataInicial -= t.monto;
+        if (t.categoria === 'Ef+') plataInicial += t.monto;
+        if (t.categoria === 'Ef-') plataInicial -= t.monto;
       }
 
       // Selected month statistics
       if (esEsteMes) {
-        if (t.categoria === 'Ingreso') ingresos += t.monto;
+        if (t.categoria === 'Ingreso') {
+          ingresoReal += t.monto;
+          ingresos += t.monto;
+        }
         if (t.categoria === 'Gasto') gastos += t.monto;
         if (t.categoria === 'Inversion') inversiones += t.monto;
-      }
-
-      // Cash balance calculation (all-time Ef+ minus Ef- up to the selected month)
-      if (esHastaEsteMes) {
-        if (t.categoria === 'Ef+') efectivo += t.monto;
+        if (t.categoria === 'Ef+') {
+          ingresos += t.monto; // el efectivo ingresado también cuenta como "Dinero Ingresado"
+          efectivo += t.monto;
+        }
         if (t.categoria === 'Ef-') efectivo -= t.monto;
       }
     });
 
-    const dineroEnCuenta = plataInicial + ingresos - gastos - inversiones;
+    const dineroEnCuenta = plataInicial + ingresoReal - gastos - inversiones;
     const totalActual = dineroEnCuenta + efectivo;
 
     return {
@@ -203,6 +210,20 @@ export default function App() {
     motivo: string;
   }) => {
     if (!user) return;
+
+    // Validación: no permitir retirar/gastar más plata de la que hay disponible
+    if (data.categoria === 'Ef-' && data.monto > summary.efectivo) {
+      alert(
+        `No podés retirar $${data.monto.toLocaleString('es-AR')} en efectivo porque solo tenés $${summary.efectivo.toLocaleString('es-AR')} disponibles este mes.`
+      );
+      return;
+    }
+    if ((data.categoria === 'Gasto' || data.categoria === 'Inversion') && data.monto > summary.dineroEnCuenta) {
+      alert(
+        `No podés registrar $${data.monto.toLocaleString('es-AR')} porque solo tenés $${summary.dineroEnCuenta.toLocaleString('es-AR')} disponibles en tu cuenta este mes.`
+      );
+      return;
+    }
 
     const newTx = {
       ...data,
@@ -434,6 +455,17 @@ export default function App() {
         {/* Dashboard displays all calculated totals */}
         <Dashboard summary={summary} hideBalances={hideBalances} />
 
+        {/* Gráfico 3D: Ingresos vs Gastos vs Inversión */}
+        <div className="mb-6">
+          <ErrorBoundary>
+            <Grafico3D
+              ingresos={summary.ingresos}
+              gastos={summary.gastos}
+              inversiones={summary.inversiones}
+            />
+          </ErrorBoundary>
+        </div>
+
         {/* Two column layout: Form & List */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
@@ -479,9 +511,10 @@ export default function App() {
 
         </div>
 
-        {/* Conversor rápido de monedas, debajo del historial, ancho completo */}
-        <div className="mt-6">
+        {/* Conversor rápido de monedas y calculadora de impuestos, debajo del historial */}
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
           <ConversorRapido />
+          <CalculadoraImpuestos />
         </div>
 
       </main>
