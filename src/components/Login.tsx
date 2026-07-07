@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { signInWithPopup, signInAnonymously, GoogleAuthProvider } from 'firebase/auth';
+import React, { useState, useEffect } from 'react';
+import { signInWithRedirect, getRedirectResult, signInAnonymously, GoogleAuthProvider } from 'firebase/auth';
 import { auth, provider } from '../firebase';
 import { LogIn, ShieldAlert, Sparkles, User, Wallet, Sun, Moon } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -14,22 +14,35 @@ export default function Login({ onLoginSuccess, darkMode, onToggleDarkMode }: Lo
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
 
+  // Al volver de la redirección de Google (en vez de una ventana emergente), procesamos el resultado acá.
+  // Esto funciona mucho mejor en Safari, Firefox y navegadores de celular que el método de "popup".
+  useEffect(() => {
+    async function procesarRedireccion() {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          const credential = GoogleAuthProvider.credentialFromResult(result);
+          const token = credential?.accessToken || undefined;
+          onLoginSuccess(token);
+        }
+      } catch (err: any) {
+        console.error(err);
+        setError('Error al iniciar sesión con Google. Intentá de nuevo.');
+      }
+    }
+    procesarRedireccion();
+  }, []);
+
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await signInWithPopup(auth, provider);
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      const token = credential?.accessToken || undefined;
-      onLoginSuccess(token);
+      // signInWithRedirect navega a la página de Google y vuelve; es más compatible
+      // entre navegadores que signInWithPopup (que falla en Safari y varios navegadores de celular).
+      await signInWithRedirect(auth, provider);
     } catch (err: any) {
       console.error(err);
-      if (err.code === 'auth/popup-blocked') {
-        setError('El navegador bloqueó la ventana emergente de inicio de sesión. Por favor, habilítala o usa el modo Invitado.');
-      } else {
-        setError('Error al iniciar sesión con Google. Intentando de nuevo...');
-      }
-    } finally {
+      setError('Error al iniciar sesión con Google. Intentando de nuevo...');
       setLoading(false);
     }
   };
@@ -42,7 +55,11 @@ export default function Login({ onLoginSuccess, darkMode, onToggleDarkMode }: Lo
       onLoginSuccess();
     } catch (err: any) {
       console.error(err);
-      setError('Error al iniciar sesión como Invitado. Intente nuevamente.');
+      if (err.code === 'auth/admin-restricted-operation' || err.code === 'auth/operation-not-allowed') {
+        setError('El acceso como Invitado no está habilitado en este proyecto. Contactá al administrador.');
+      } else {
+        setError('Error al iniciar sesión como Invitado. Intente nuevamente.');
+      }
     } finally {
       setLoading(false);
     }
