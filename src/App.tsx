@@ -477,24 +477,6 @@ export default function App() {
               selectedYear={selectedYear}
             />
 
-            {/* Informative Help Card */}
-            <div className="bg-blue-50/50 dark:bg-blue-950/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl p-4 shadow-3xs transition-colors duration-200">
-              <div className="flex gap-2">
-                <Info className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <h4 className="text-[11px] font-bold text-blue-900 dark:text-blue-300 uppercase tracking-wider">
-                    ¿Cómo funciona la Plata Inicial?
-                  </h4>
-                  <p className="text-[11px] text-blue-700 dark:text-blue-400 leading-normal font-sans">
-                    La <strong>Plata Inicial</strong> se calcula automáticamente sumando todos tus ingresos y restando todos tus gastos e inversiones de los meses anteriores.
-                  </p>
-                  <p className="text-[11px] text-blue-700 dark:text-blue-400 leading-normal font-sans">
-                    Esto asegura que los fondos sobrantes de cada mes se trasladen de forma automática al mes siguiente. ¡Prueba a cambiar de mes para ver el efecto!
-                  </p>
-                </div>
-              </div>
-            </div>
-
             {/* Calculadora de cuotas */}
             <CalculadoraCuotas />
           </div>
