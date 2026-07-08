@@ -21,9 +21,7 @@ import GoogleDriveModal from './components/GoogleDriveModal';
 import MarketTicker from './components/MarketTicker';
 import ConversorRapido from './components/ConversorRapido';
 import CalculadoraCuotas from './components/CalculadoraCuotas';
-import Grafico3D from './components/Grafico3D';
 import CalculadoraImpuestos from './components/CalculadoraImpuestos';
-import ErrorBoundary from './components/ErrorBoundary';
 import { Sparkles, Info, ArrowUpRight, ShieldCheck, Download, Trash2, Cloud } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -454,17 +452,6 @@ export default function App() {
 
         {/* Dashboard displays all calculated totals */}
         <Dashboard summary={summary} hideBalances={hideBalances} />
-
-        {/* Gráfico 3D: Ingresos vs Gastos vs Inversión */}
-        <div className="mb-6">
-          <ErrorBoundary>
-            <Grafico3D
-              ingresos={summary.ingresos}
-              gastos={summary.gastos}
-              inversiones={summary.inversiones}
-            />
-          </ErrorBoundary>
-        </div>
 
         {/* Two column layout: Form & List */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
