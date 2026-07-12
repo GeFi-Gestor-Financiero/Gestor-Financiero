@@ -21,7 +21,6 @@ import GoogleDriveModal from './components/GoogleDriveModal';
 import MarketTicker from './components/MarketTicker';
 import ConversorRapido from './components/ConversorRapido';
 import CalculadoraCuotas from './components/CalculadoraCuotas';
-import CalculadoraImpuestos from './components/CalculadoraImpuestos';
 import { ShieldCheck, Download, Trash2, Cloud } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -330,14 +329,11 @@ export default function App() {
           <div className="lg:col-span-4 space-y-4">
             <TransactionForm onAddTransaction={handleAddTransaction} selectedMonth={selectedMonth} selectedYear={selectedYear} />
             <CalculadoraCuotas />
+            <ConversorRapido />
           </div>
           <div className="lg:col-span-8">
             <TransactionList transactions={activeMonthTransactions} onDeleteTransaction={handleDeleteTransaction} loading={transactionsLoading} hideBalances={hideBalances} />
           </div>
-        </div>
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ConversorRapido />
-          <CalculadoraImpuestos />
         </div>
       </main>
       <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-4 mt-8 transition-colors duration-200">
