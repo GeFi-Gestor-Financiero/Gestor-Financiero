@@ -3,7 +3,6 @@ import ToastContainer from './components/ToastContainer';
 import { useAlert } from './hooks/useAlert';
 import { useToast } from './hooks/useToast';
 
-
 import ScrollToTop from "./components/ScrollToTop";
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
@@ -28,14 +27,18 @@ import GoogleDriveModal from './components/GoogleDriveModal';
 import MarketTicker from './components/MarketTicker';
 import ConversorRapido from './components/ConversorRapido';
 import CalculadoraCuotas from './components/CalculadoraCuotas';
-import { ShieldCheck, Download, Trash2, Cloud } from 'lucide-react';
+import { ShieldCheck, Download, Trash2, Cloud, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+
+// URL de la API de Apps Script conectada a tu Google Sheet
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwS_r25YZRSvpvL1uk3Qmf3nweI2EimIOqTzZlmXUBvArt09qzTz2pKtUdx3uC4LJju/exec";
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const [syncingSheets, setSyncingSheets] = useState(false);
   const [driveToken, setDriveToken] = useState<string | null>(null);
   const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
   const [darkMode, setDarkMode] = useState<boolean>(() => {
@@ -117,6 +120,77 @@ export default function App() {
     });
     return () => unsubscribe();
   }, [user]);
+
+  // Sincronización en vivo con Google Sheets vía Apps Script
+  const handleSyncSheets = async () => {
+    if (!user) return;
+    setSyncingSheets(true);
+    try {
+      const response = await fetch(APPS_SCRIPT_URL);
+      const data = await response.json();
+
+      if (!Array.isArray(data)) {
+        alert("No se pudieron obtener datos del Google Sheet o la hoja está vacía.");
+        setSyncingSheets(false);
+        return;
+      }
+
+      let addedCount = 0;
+      const transactionsRef = collection(db, 'users', user.uid, 'transactions');
+
+      for (const row of data) {
+        if (!row.Fecha || !row.Monto) continue;
+
+        // Normalizar fecha a YYYY-MM-DD
+        let fechaStr = String(row.Fecha).split('T')[0];
+        const montoNum = parseFloat(row.Monto) || 0;
+        const tipo = String(row.Tipo || 'Gasto').trim();
+        const origen = String(row.Origen || '').toLowerCase().trim();
+        const destino = String(row.Destino || '').toLowerCase().trim();
+
+        // Mapear Tipo y Cuentas de Sheets a los tipos soportados por la app
+        let categoriaApp: 'Ingreso' | 'Gasto' | 'Inversion' | 'Ef+' | 'Ef-' = 'Gasto';
+        if (tipo.toLowerCase() === 'ingreso') {
+          categoriaApp = destino === 'efectivo' ? 'Ef+' : 'Ingreso';
+        } else if (tipo.toLowerCase() === 'inversion') {
+          categoriaApp = 'Inversion';
+        } else if (tipo.toLowerCase() === 'transferencia') {
+          if (destino === 'efectivo') categoriaApp = 'Ef+';
+          else if (origen === 'efectivo') categoriaApp = 'Ef-';
+          else categoriaApp = 'Ingreso';
+        } else {
+          // Gasto
+          categoriaApp = origen === 'efectivo' ? 'Ef-' : 'Gasto';
+        }
+
+        const motivoApp = row.Descripción || row.Categoría || 'Movimiento Sheet';
+
+        // Evitar duplicados comparando fecha, categoría, monto y motivo
+        const alreadyExists = transactions.some(
+          (t) => t.fecha === fechaStr && t.categoria === categoriaApp && t.monto === montoNum && t.motivo === motivoApp
+        );
+
+        if (!alreadyExists) {
+          await addDoc(transactionsRef, {
+            fecha: fechaStr,
+            categoria: categoriaApp,
+            monto: montoNum,
+            motivo: motivoApp,
+            createdAt: Date.now(),
+            uid: user.uid
+          });
+          addedCount++;
+        }
+      }
+
+      alert(`Sincronización completa: ${addedCount} movimientos nuevos importados.`);
+    } catch (error) {
+      console.error("Error sincronizando con Google Sheets:", error);
+      alert("Error al conectar con la API de Google Sheets.");
+    } finally {
+      setSyncingSheets(false);
+    }
+  };
 
   const getMonthYearFromDate = (dateStr: string) => {
     const parts = dateStr.split('-');
@@ -312,24 +386,24 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans antialiased text-slate-800 dark:text-slate-100 transition-colors duration-200">
-<div className="sticky top-0 z-50 bg-slate-50 dark:bg-slate-950">
-  <MarketTicker />
+      <div className="sticky top-0 z-50 bg-slate-50 dark:bg-slate-950">
+        <MarketTicker />
 
-  <Header
-    user={user}
-    selectedMonth={selectedMonth}
-    selectedYear={selectedYear}
-    onMonthChange={setSelectedMonth}
-    onYearChange={setSelectedYear}
-    onLogout={handleLogout}
-    darkMode={darkMode}
-    onToggleDarkMode={toggleDarkMode}
-    hideBalances={hideBalances}
-    onToggleHideBalances={toggleHideBalances}
-  />
-</div>
+        <Header
+          user={user}
+          selectedMonth={selectedMonth}
+          selectedYear={selectedYear}
+          onMonthChange={setSelectedMonth}
+          onYearChange={setSelectedYear}
+          onLogout={handleLogout}
+          darkMode={darkMode}
+          onToggleDarkMode={toggleDarkMode}
+          hideBalances={hideBalances}
+          onToggleHideBalances={toggleHideBalances}
+        />
+      </div>
 
-<main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm transition-colors duration-200">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
@@ -341,6 +415,14 @@ export default function App() {
             </div>
           </div>
           <div className="flex flex-wrap gap-1.5">
+            <button 
+              onClick={handleSyncSheets} 
+              disabled={syncingSheets}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 border border-emerald-200 dark:border-emerald-900/40 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 rounded-lg text-[10px] font-bold text-emerald-600 dark:text-emerald-400 transition cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3 h-3 ${syncingSheets ? 'animate-spin' : ''}`} />
+              <span>{syncingSheets ? 'SINCRONIZANDO...' : 'SINCRONIZAR SHEETS'}</span>
+            </button>
             <button onClick={() => setIsDriveModalOpen(true)} className="flex items-center gap-1.5 px-2.5 py-1.5 border border-blue-200 dark:border-blue-900/40 hover:bg-blue-50 dark:hover:bg-blue-950/20 rounded-lg text-[10px] font-bold text-blue-600 dark:text-blue-450 transition cursor-pointer"><Cloud className="w-3 h-3" /><span>DRIVE</span></button>
             <button onClick={handleExportJSON} className="flex items-center gap-1 px-2.5 py-1.5 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 transition cursor-pointer"><Download className="w-3 h-3" /><span>EXPORTAR</span></button>
             <button onClick={handleClearMonth} className="flex items-center gap-1 px-2.5 py-1.5 border border-rose-100 dark:border-rose-950/40 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg text-[10px] font-bold text-rose-600 dark:text-rose-400 transition cursor-pointer"><Trash2 className="w-3 h-3" /><span>LIMPIAR</span></button>
@@ -368,8 +450,7 @@ export default function App() {
           <GoogleDriveModal isOpen={isDriveModalOpen} onClose={() => setIsDriveModalOpen(false)} transactions={transactions} onImportTransactions={handleImportTransactions} currentMonthName={MESES[selectedMonth]} currentYear={selectedYear} driveToken={driveToken} onSetDriveToken={setDriveToken} />
         )}
       </AnimatePresence>
-   <ScrollToTop />
-      
+      <ScrollToTop />
     </div>
   );
 }
