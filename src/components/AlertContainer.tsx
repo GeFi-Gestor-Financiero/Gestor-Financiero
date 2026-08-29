@@ -9,7 +9,7 @@ export default function AlertContainer() {
   return (
     <AnimatePresence>
       {alerts.map((alert) => (
-        <AlertModal key={alert.id} alert={alert} onClose={closeAlert} />
+        <React.Fragment key={alert.id}><AlertModal alert={alert} onClose={closeAlert} /></React.Fragment>
       ))}
     </AnimatePresence>
   );

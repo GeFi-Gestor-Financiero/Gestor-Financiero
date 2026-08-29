@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { signInWithPopup, signInAnonymously, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithPopup, signInAnonymously, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, provider } from '../firebase';
 import { LogIn, ShieldAlert, Sparkles, User, Wallet, Sun, Moon } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -13,6 +13,9 @@ interface LoginProps {
 export default function Login({ onLoginSuccess, darkMode, onToggleDarkMode }: LoginProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [registering, setRegistering] = useState(false);
 
   const handleGoogleLogin = async () => {
     setLoading(true);
@@ -25,6 +28,20 @@ export default function Login({ onLoginSuccess, darkMode, onToggleDarkMode }: Lo
     } catch (err: any) {
       console.error(err);
       setError('Error al iniciar sesión con Google. Intenta de nuevo.');
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!email.trim() || password.length < 6) { setError('Ingresá un correo válido y una contraseña de al menos 6 caracteres.'); return; }
+    setLoading(true); setError(null);
+    try {
+      if (registering) await createUserWithEmailAndPassword(auth, email.trim(), password);
+      else await signInWithEmailAndPassword(auth, email.trim(), password);
+      onLoginSuccess();
+    } catch (err: any) {
+      setError(err.code === 'auth/email-already-in-use' ? 'Ese correo ya está registrado.' : 'No se pudo iniciar sesión. Revisá tus datos o creá una cuenta.');
       setLoading(false);
     }
   };
@@ -120,6 +137,12 @@ export default function Login({ onLoginSuccess, darkMode, onToggleDarkMode }: Lo
                   </>
                 )}
               </button>
+              <form onSubmit={handlePasswordLogin} className="space-y-2 pt-1">
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Correo electrónico" className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder:text-slate-400" />
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña (mín. 6 caracteres)" className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder:text-slate-400" />
+                <button type="submit" disabled={loading} className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold disabled:opacity-50">{registering ? 'CREAR CUENTA' : 'INGRESAR CON CONTRASEÑA'}</button>
+                <button type="button" onClick={() => setRegistering(!registering)} className="w-full text-[10px] text-blue-600 dark:text-blue-400">{registering ? 'Ya tengo una cuenta' : 'Crear cuenta con correo y contraseña'}</button>
+              </form>
             </div>
 
             <div className="relative">

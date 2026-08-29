@@ -8,6 +8,10 @@ This contains everything you need to run your app locally.
 
 View your app in AI Studio: https://ai.studio/apps/a94cc835-b2e3-4297-b9d5-2f6cdda80b7d
 
+## Reporte mensual seguro
+
+`functions/monthlyFinanceReport` queda programada para el día 1 a las 09:00, zona `America/Argentina/Buenos_Aires`. Antes de publicarla, instalar las dependencias de `functions/`, configurar `SMTP_HOST`, `SMTP_PORT` y `SMTP_FROM`, y crear los secretos de Firebase `SMTP_USER` y `SMTP_PASS`. Ninguna credencial SMTP se expone al navegador.
+
 ## Run Locally
 
 **Prerequisites:**  Node.js

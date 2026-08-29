@@ -1,457 +1,137 @@
-import AlertContainer from './components/AlertContainer';
-import ToastContainer from './components/ToastContainer';
-import { useAlert } from './hooks/useAlert';
-import { useToast } from './hooks/useToast';
+import React, { useEffect, useMemo, useState } from 'react';
+import { User, onAuthStateChanged, signOut } from 'firebase/auth';
+import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc, updateDoc } from 'firebase/firestore';
+import { Download, Plus, ExternalLink, Link as LinkIcon, Trash2, X, Pencil } from 'lucide-react';
+import { auth, db } from './firebase';
+import { Account, Loan, FixedExpense, Transaction, UserSettings } from './types';
+import Login from './components/Login'; import Header, { MESES } from './components/Header'; import TransactionForm from './components/TransactionForm'; import TransactionList from './components/TransactionList';
 
-import ScrollToTop from "./components/ScrollToTop";
-import React, { useState, useEffect } from 'react';
-import { onAuthStateChanged, signOut, User } from 'firebase/auth';
-import {
-  collection,
-  doc,
-  addDoc,
-  deleteDoc,
-  onSnapshot,
-  getDocFromServer,
-  query,
-  orderBy
-} from 'firebase/firestore';
-import { auth, db, handleFirestoreError, OperationType } from './firebase';
-import { Transaction, MonthSummary } from './types';
-import Login from './components/Login';
-import Header, { MESES } from './components/Header';
-import Dashboard from './components/Dashboard';
-import TransactionForm from './components/TransactionForm';
-import TransactionList from './components/TransactionList';
-import GoogleDriveModal from './components/GoogleDriveModal';
-import MarketTicker from './components/MarketTicker';
-import ConversorRapido from './components/ConversorRapido';
-import CalculadoraCuotas from './components/CalculadoraCuotas';
-import { ShieldCheck, Download, Trash2, Cloud, RefreshCw } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+const defaults: UserSettings = { darkMode: false, hideBalances: false, monedaBase: 'ARS', monedas: ['ARS','USD','EUR','BRL'], categorias: ['General','Alimentos','Transporte','Salud','Educación','Hogar','Ocio','Trabajo'], widgets: ['patrimonio','cuentas','efectivo','inversiones'], quickLinks: [], showSavings: true };
+const today = () => new Date().toISOString().slice(0,10);
+const toArs = (t: Transaction) => t.monto * (t.moneda === 'ARS' || !t.moneda ? 1 : Number(t.cotizacion || 1));
+const readCache = <T,>(key: string, fallback: T): T => { try { const raw = localStorage.getItem(`gefi:${key}`); return raw ? JSON.parse(raw) as T : fallback; } catch { return fallback; } };
+const writeCache = (key: string, value: unknown) => localStorage.setItem(`gefi:${key}`, JSON.stringify(value));
+const preferredFavicon=(url:string)=>{try{const parsed=new URL(url);if((parsed.hostname==='google.com'||parsed.hostname.endsWith('.google.com'))&&parsed.pathname.startsWith('/finance'))return 'https://www.gstatic.com/finance/favicon/finance_v2_120x120.png';return `${parsed.origin}/favicon.ico`}catch{return ''}};
+function QuickLinkIcon({url,name}:{url:string;name?:string}) {
+ const origin=(()=>{try{return new URL(url).origin}catch{return ''}})();
+ const preferred=preferredFavicon(url);
+ const [source,setSource]=useState(preferred), [failed,setFailed]=useState(!preferred);
+ useEffect(()=>{setSource(preferred);setFailed(!preferred)},[preferred]);
+ if(failed)return <LinkIcon className="w-4 h-4 text-blue-600"/>;
+ return <img src={source} alt="" aria-hidden="true" className="w-5 h-5 rounded-sm object-contain" onError={()=>{if(source.startsWith('https://www.google.com/s2/'))setFailed(true);else setSource(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(origin)}&sz=64`)}} title={name?`Logo de ${name}`:'Logo del sitio'}/>;
+}
+const quickLinkLabel=(url:string,name?:string)=>{if(name?.trim())return name.trim();try{return new URL(url).hostname.replace(/^www\./,'')}catch{return 'Abrir acceso directo'}};
+const mergeCached = <T extends {id:string}>(remote:T[], cached:T[]) => {
+ const map = new Map(cached.map(item=>[item.id,item]));
+ remote.forEach(item=>map.set(item.id,item));
+ return [...map.values()];
+};
 
-// URL de la API de Apps Script conectada a tu Google Sheet
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwS_r25YZRSvpvL1uk3Qmf3nweI2EimIOqTzZlmXUBvArt09qzTz2pKtUdx3uC4LJju/exec";
+function InvestmentSummaryCard({total,binance,hidden}:{total:number;binance:number;hidden:boolean}) {
+ const [open,setOpen]=useState(false), iol=Math.max(0,total-binance);
+ const money=(value:number)=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(value);
+ return <div className="group relative rounded-xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/60">
+  <button type="button" aria-expanded={open} onClick={()=>setOpen(value=>!value)} className="w-full p-3 text-left"><p className="text-[10px] uppercase text-slate-400">Inversiones</p><p className="font-mono font-bold text-amber-600">{hidden?'••••':money(total)}</p></button>
+  <div className={`${open?'block':'hidden group-hover:block'} absolute z-40 right-0 top-full mt-2 w-56 rounded-xl border border-violet-200 dark:border-violet-900/60 bg-white dark:bg-slate-900 p-3 shadow-xl`}><p className="text-[10px] font-bold uppercase tracking-wide text-violet-600 dark:text-violet-400">Detalle de inversiones</p><div className="mt-2 space-y-2 text-xs"><div className="flex justify-between gap-3"><span>IOL</span><strong className="font-mono">{hidden?'••••':money(iol)}</strong></div><div className="flex justify-between gap-3"><span>Binance · Cripto</span><strong className="font-mono text-violet-600 dark:text-violet-400">{hidden?'••••':money(binance)}</strong></div></div></div>
+ </div>;
+}
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [transactionsLoading, setTransactionsLoading] = useState(false);
-  const [syncingSheets, setSyncingSheets] = useState(false);
-  const [driveToken, setDriveToken] = useState<string | null>(null);
-  const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState<boolean>(() => {
-    const saved = localStorage.getItem('darkMode');
-    return saved === 'true';
+ const [user,setUser]=useState<User|null>(null), [loading,setLoading]=useState(true), [txs,setTxs]=useState<Transaction[]>(()=>readCache('transactions',[])), [accounts,setAccounts]=useState<Account[]>(()=>readCache('accounts',[])), [fixed,setFixed]=useState<FixedExpense[]>(()=>readCache('fixedExpenses',[])), [loans,setLoans]=useState<Loan[]>(()=>readCache('loans',[])), [settings,setSettings]=useState<UserSettings>(()=>({...defaults,...readCache('settings',{})})), [showSettings,setShowSettings]=useState(false);
+ const [fixedFormOpen,setFixedFormOpen]=useState(false), [fixedDraft,setFixedDraft]=useState({nombre:'',monto:''}), [fixedFormError,setFixedFormError]=useState('');
+ const [currentHour,setCurrentHour]=useState(()=>new Date().getHours());
+ const [quickLinkMenu,setQuickLinkMenu]=useState<{id:string;x:number;y:number}|null>(null), [quickLinkEdit,setQuickLinkEdit]=useState<{id:string;nombre:string;url:string}|null>(null), [quickLinkEditError,setQuickLinkEditError]=useState(''), [quickLinkDelete,setQuickLinkDelete]=useState<string|null>(null);
+ const now=new Date(); const [month,setMonth]=useState(now.getMonth()), [year,setYear]=useState(now.getFullYear());
+ useEffect(()=>onAuthStateChanged(auth,u=>{setUser(u);setLoading(false); if(u) setDoc(doc(db,'users',u.uid),{email:u.email||null,displayName:u.displayName||null,updatedAt:Date.now()},{merge:true});}),[]);
+ useEffect(()=>{ document.documentElement.classList.toggle('dark',settings.darkMode); },[settings.darkMode]);
+ useEffect(()=>{const timer=window.setInterval(()=>setCurrentHour(new Date().getHours()),60_000);return()=>window.clearInterval(timer)},[]);
+ useEffect(()=>writeCache('settings',settings),[settings]);
+ useEffect(()=>writeCache('transactions',txs),[txs]);
+ useEffect(()=>writeCache('accounts',accounts),[accounts]);
+ useEffect(()=>writeCache('fixedExpenses',fixed),[fixed]);
+ useEffect(()=>writeCache('loans',loans),[loans]);
+ useEffect(()=>{const limit=Date.now()-30*24*60*60*1000;const expired=txs.filter(t=>t.deletedAt&&t.deletedAt<limit);if(!expired.length)return;setTxs(current=>current.filter(t=>!expired.some(x=>x.id===t.id)));if(user)expired.filter(t=>!t.id.startsWith('local-')).forEach(t=>deleteDoc(doc(db,'users',user.uid,'transactions',t.id)).catch(()=>undefined))},[txs,user]);
+ useEffect(()=>{if(!user)return; const unsubs=[
+  onSnapshot(query(collection(db,'users',user.uid,'transactions'),orderBy('createdAt','desc')),s=>setTxs(current=>mergeCached(s.docs.map(d=>({id:d.id,...d.data()} as Transaction)),current.filter(x=>x.id.startsWith('local-')))),()=>console.warn('Firestore no disponible: se conserva el respaldo local.')),
+  onSnapshot(doc(db,'users',user.uid,'settings','finance'),s=>{if(s.exists())setSettings({...defaults,...s.data()} as UserSettings);else setDoc(doc(db,'users',user.uid,'settings','finance'),defaults).catch(()=>undefined)},()=>console.warn('Firestore no disponible: se conserva el respaldo local.')),
+  onSnapshot(collection(db,'users',user.uid,'accounts'),s=>setAccounts(current=>mergeCached(s.docs.map(d=>({id:d.id,...d.data()} as Account)),current.filter(x=>x.id.startsWith('local-')))),()=>undefined),
+  onSnapshot(collection(db,'users',user.uid,'fixedExpenses'),s=>setFixed(current=>mergeCached(s.docs.map(d=>({id:d.id,...d.data()} as FixedExpense)),current.filter(x=>x.id.startsWith('local-')))),()=>undefined),
+  onSnapshot(collection(db,'users',user.uid,'loans'),s=>setLoans(current=>mergeCached(s.docs.map(d=>({id:d.id,...d.data()} as Loan)),current.filter(x=>x.id.startsWith('local-')))),()=>undefined)]; return()=>unsubs.forEach(x=>x());},[user]);
+ const saveSettings=async(next:UserSettings)=>{setSettings(next);if(user) await setDoc(doc(db,'users',user.uid,'settings','finance'),next).catch(()=>undefined)};
+ const saveQuickLinkEdit=()=>{if(!quickLinkEdit)return;const url=quickLinkEdit.url.trim();if(!/^https?:\/\//.test(url)){setQuickLinkEditError('La URL debe comenzar con http:// o https://.');return}saveSettings({...settings,quickLinks:settings.quickLinks.map(x=>x.id===quickLinkEdit.id?{...x,nombre:quickLinkEdit.nombre.trim(),url}:x)});setQuickLinkEdit(null);setQuickLinkEditError('')};
+ const currentTxs=useMemo(()=>txs.filter(t=>!t.deletedAt&&Number.isFinite(t.monto)&&t.monto>0&&typeof t.motivo==='string'&&t.motivo.trim()&&!/\bundefined\b/i.test(t.motivo)),[txs]);
+ const trashedTxs=useMemo(()=>txs.filter(t=>Boolean(t.deletedAt)).sort((a,b)=>(b.deletedAt||0)-(a.deletedAt||0)),[txs]);
+ const active=useMemo(()=>currentTxs.filter(t=>{const d=new Date(`${t.fecha}T12:00:00`);return d.getFullYear()===year&&d.getMonth()===month}),[currentTxs,year,month]);
+ const summary=useMemo(()=>{
+  let income=0,expense=0,investment=0,cumulativeIncome=0,cumulativeExpense=0,cumulativeInvestment=0,cashMovements=0;
+  currentTxs.forEach(t=>{const value=toArs(t),date=new Date(`${t.fecha}T12:00:00`),isCurrent=date.getFullYear()===year&&date.getMonth()===month,isBefore=date.getFullYear()<year||(date.getFullYear()===year&&date.getMonth()<month);if(!isCurrent&&!isBefore)return;
+   if(t.categoria==='Ingreso'||t.categoria==='Ef+')cumulativeIncome+=value;
+   if(t.categoria==='Gasto'||t.categoria==='Ef-'||t.categoria==='Gasto efectivo')cumulativeExpense+=value;
+   if(t.categoria==='Inversion')cumulativeInvestment+=value;if(t.categoria==='Desinversion')cumulativeInvestment-=value;
+   if(t.categoria==='Ef+'||t.categoria==='Ef-')cashMovements+=t.categoria==='Ef+'?value:-value;
+   if(isCurrent){if(t.categoria==='Ingreso'||t.categoria==='Ef+')income+=value;if(t.categoria==='Gasto'||t.categoria==='Ef-'||t.categoria==='Gasto efectivo')expense+=value;if(t.categoria==='Inversion')investment+=value;if(t.categoria==='Desinversion')investment-=value;}
   });
-
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('darkMode', 'true');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('darkMode', 'false');
-    }
-  }, [darkMode]);
-
-  const toggleDarkMode = () => setDarkMode(prev => !prev);
-  const [hideBalances, setHideBalances] = useState<boolean>(() => {
-    const saved = localStorage.getItem('hideBalances');
-    return saved === 'true';
-  });
-
-  useEffect(() => {
-    localStorage.setItem('hideBalances', hideBalances ? 'true' : 'false');
-  }, [hideBalances]);
-
-  const toggleHideBalances = () => setHideBalances(prev => !prev);
-  const today = new Date();
-  const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth());
-  const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    async function testConnection() {
-      try {
-        await getDocFromServer(doc(db, 'test', 'connection'));
-      } catch (error) {
-        console.warn("Test connection skipped / failed:", error);
-      }
-    }
-    testConnection();
-  }, []);
-
-  useEffect(() => {
-    if (!user) {
-      setTransactions([]);
-      return;
-    }
-    setTransactionsLoading(true);
-    const transactionsRef = collection(db, 'users', user.uid, 'transactions');
-    const q = query(transactionsRef, orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list: Transaction[] = [];
-      snapshot.forEach((docSnapshot) => {
-        const data = docSnapshot.data();
-        list.push({
-          id: docSnapshot.id,
-          fecha: data.fecha,
-          categoria: data.categoria,
-          monto: Number(data.monto),
-          motivo: data.motivo,
-          createdAt: data.createdAt,
-          uid: data.uid
-        });
-      });
-      setTransactions(list);
-      setTransactionsLoading(false);
-    }, (error) => {
-      console.error("Error fetching transactions:", error);
-      setTransactionsLoading(false);
-    });
-    return () => unsubscribe();
-  }, [user]);
-
-  // Sincronización en vivo con Google Sheets vía Apps Script
-  const handleSyncSheets = async () => {
-    if (!user) return;
-    setSyncingSheets(true);
-    try {
-      const response = await fetch(APPS_SCRIPT_URL);
-      const data = await response.json();
-
-      if (!Array.isArray(data)) {
-        alert("No se pudieron obtener datos del Google Sheet o la hoja está vacía.");
-        setSyncingSheets(false);
-        return;
-      }
-
-      let addedCount = 0;
-      const transactionsRef = collection(db, 'users', user.uid, 'transactions');
-
-      for (const row of data) {
-        if (!row.Fecha || !row.Monto) continue;
-
-        // Normalizar fecha a YYYY-MM-DD
-        let fechaStr = String(row.Fecha).split('T')[0];
-        const montoNum = parseFloat(row.Monto) || 0;
-        const tipo = String(row.Tipo || 'Gasto').trim();
-        const origen = String(row.Origen || '').toLowerCase().trim();
-        const destino = String(row.Destino || '').toLowerCase().trim();
-
-        // Mapear Tipo y Cuentas de Sheets a los tipos soportados por la app
-        let categoriaApp: 'Ingreso' | 'Gasto' | 'Inversion' | 'Ef+' | 'Ef-' = 'Gasto';
-        if (tipo.toLowerCase() === 'ingreso') {
-          categoriaApp = destino === 'efectivo' ? 'Ef+' : 'Ingreso';
-        } else if (tipo.toLowerCase() === 'inversion') {
-          categoriaApp = 'Inversion';
-        } else if (tipo.toLowerCase() === 'transferencia') {
-          if (destino === 'efectivo') categoriaApp = 'Ef+';
-          else if (origen === 'efectivo') categoriaApp = 'Ef-';
-          else categoriaApp = 'Ingreso';
-        } else {
-          // Gasto
-          categoriaApp = origen === 'efectivo' ? 'Ef-' : 'Gasto';
-        }
-
-        const motivoApp = row.Descripción || row.Categoría || 'Movimiento Sheet';
-
-        // Evitar duplicados comparando fecha, categoría, monto y motivo
-        const alreadyExists = transactions.some(
-          (t) => t.fecha === fechaStr && t.categoria === categoriaApp && t.monto === montoNum && t.motivo === motivoApp
-        );
-
-        if (!alreadyExists) {
-          await addDoc(transactionsRef, {
-            fecha: fechaStr,
-            categoria: categoriaApp,
-            monto: montoNum,
-            motivo: motivoApp,
-            createdAt: Date.now(),
-            uid: user.uid
-          });
-          addedCount++;
-        }
-      }
-
-      alert(`Sincronización completa: ${addedCount} movimientos nuevos importados.`);
-    } catch (error) {
-      console.error("Error sincronizando con Google Sheets:", error);
-      alert("Error al conectar con la API de Google Sheets.");
-    } finally {
-      setSyncingSheets(false);
-    }
-  };
-
-  const getMonthYearFromDate = (dateStr: string) => {
-    const parts = dateStr.split('-');
-    return {
-      year: parseInt(parts[0], 10),
-      month: parseInt(parts[1], 10) - 1
-    };
-  };
-
-  const calculateSummary = (): MonthSummary => {
-    let plataInicial = 0;
-    let ingresoReal = 0;
-    let ingresos = 0;
-    let gastos = 0;
-    let inversiones = 0;
-    let efectivo = 0;
-
-    transactions.forEach((t) => {
-      const { year, month } = getMonthYearFromDate(t.fecha);
-      const esAnterior = (year < selectedYear) || (year === selectedYear && month < selectedMonth);
-      const esEsteMes = (year === selectedYear && month === selectedMonth);
-
-      if (esAnterior) {
-        if (t.categoria === 'Ingreso') plataInicial += t.monto;
-        if (t.categoria === 'Gasto') plataInicial -= t.monto;
-        if (t.categoria === 'Inversion') plataInicial -= t.monto;
-        if (t.categoria === 'Ef+') plataInicial += t.monto;
-        if (t.categoria === 'Ef-') plataInicial -= t.monto;
-      }
-
-      if (esEsteMes) {
-        if (t.categoria === 'Ingreso') {
-          ingresoReal += t.monto;
-          ingresos += t.monto;
-        }
-        if (t.categoria === 'Gasto') gastos += t.monto;
-        if (t.categoria === 'Inversion') inversiones += t.monto;
-        if (t.categoria === 'Ef+') {
-          ingresos += t.monto;
-          efectivo += t.monto;
-        }
-        if (t.categoria === 'Ef-') efectivo -= t.monto;
-      }
-    });
-
-    const dineroEnCuenta = plataInicial + ingresoReal - gastos - inversiones;
-    const totalActual = dineroEnCuenta + efectivo;
-
-    return {
-      plataInicial,
-      ingresos,
-      gastos,
-      inversiones,
-      dineroEnCuenta,
-      efectivo,
-      totalActual
-    };
-  };
-
-  const summary = calculateSummary();
-
-  const handleAddTransaction = async (data: {
-    fecha: string;
-    categoria: 'Ingreso' | 'Gasto' | 'Inversion' | 'Ef+' | 'Ef-';
-    monto: number;
-    motivo: string;
-  }) => {
-    if (!user) return;
-    if (data.categoria === 'Ef-' && data.monto > summary.efectivo) {
-      alert(`No podés retirar $${data.monto.toLocaleString('es-AR')} en efectivo porque solo tenés $${summary.efectivo.toLocaleString('es-AR')} disponibles.`);
-      return;
-    }
-    if ((data.categoria === 'Gasto' || data.categoria === 'Inversion') && data.monto > summary.dineroEnCuenta) {
-      alert(`No podés registrar $${data.monto.toLocaleString('es-AR')} porque solo tenés $${summary.dineroEnCuenta.toLocaleString('es-AR')} disponibles.`);
-      return;
-    }
-    const newTx = {
-      ...data,
-      createdAt: Date.now(),
-      uid: user.uid
-    };
-    try {
-      const transactionsRef = collection(db, 'users', user.uid, 'transactions');
-      await addDoc(transactionsRef, newTx);
-    } catch (error) {
-      console.error("Error adding transaction:", error);
-    }
-  };
-
-  const handleDeleteTransaction = async (id: string) => {
-    if (!user) return;
-    try {
-      const txRef = doc(db, 'users', user.uid, 'transactions', id);
-      await deleteDoc(txRef);
-    } catch (error) {
-      console.error("Error deleting transaction:", error);
-    }
-  };
-
-  const handleExportJSON = () => {
-    const thisMonthTxs = transactions.filter((t) => {
-      const { year, month } = getMonthYearFromDate(t.fecha);
-      return year === selectedYear && month === selectedMonth;
-    });
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(thisMonthTxs, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `finanzas_${MESES[selectedMonth]}_${selectedYear}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-  };
-
-  const handleClearMonth = async () => {
-    if (!user) return;
-    const thisMonthTxs = transactions.filter((t) => {
-      const { year, month } = getMonthYearFromDate(t.fecha);
-      return year === selectedYear && month === selectedMonth;
-    });
-    if (thisMonthTxs.length === 0) {
-      alert("No hay transacciones para borrar.");
-      return;
-    }
-    if (confirm(`¿Borrar ${thisMonthTxs.length} registros de ${MESES[selectedMonth]} ${selectedYear}?`)) {
-      for (const tx of thisMonthTxs) {
-        try {
-          await deleteDoc(doc(db, 'users', user.uid, 'transactions', tx.id));
-        } catch (error) {
-          console.error("Error deleting:", error);
-        }
-      }
-    }
-  };
-
-  const handleImportTransactions = async (imported: Transaction[], mergeMode: 'overwrite' | 'merge') => {
-    if (!user) return;
-    try {
-      const transactionsRef = collection(db, 'users', user.uid, 'transactions');
-      if (mergeMode === 'overwrite') {
-        for (const tx of transactions) {
-          await deleteDoc(doc(db, 'users', user.uid, 'transactions', tx.id));
-        }
-      }
-      for (const impTx of imported) {
-        if (mergeMode === 'merge') {
-          const alreadyExists = transactions.some(
-            (t) => t.fecha === impTx.fecha && t.categoria === impTx.categoria && t.monto === impTx.monto && t.motivo === impTx.motivo
-          );
-          if (alreadyExists) continue;
-        }
-        const newTx = {
-          fecha: impTx.fecha,
-          categoria: impTx.categoria,
-          monto: Number(impTx.monto),
-          motivo: impTx.motivo || '',
-          createdAt: impTx.createdAt || Date.now(),
-          uid: user.uid
-        };
-        await addDoc(transactionsRef, newTx);
-      }
-    } catch (error) {
-      console.error("Error importing:", error);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (err) {
-      console.error("Error signing out:", err);
-    }
-  };
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center">
-          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-sm font-semibold text-slate-500 font-sans">Cargando...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Login onLoginSuccess={(token) => { if (token) setDriveToken(token); }} darkMode={darkMode} onToggleDarkMode={toggleDarkMode} />;
-  }
-
-  const activeMonthTransactions = transactions.filter((t) => {
-    const { year, month } = getMonthYearFromDate(t.fecha);
-    return year === selectedYear && month === selectedMonth;
-  });
-
-  return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans antialiased text-slate-800 dark:text-slate-100 transition-colors duration-200">
-      <div className="sticky top-0 z-50 bg-slate-50 dark:bg-slate-950">
-        <MarketTicker />
-
-        <Header
-          user={user}
-          selectedMonth={selectedMonth}
-          selectedYear={selectedYear}
-          onMonthChange={setSelectedMonth}
-          onYearChange={setSelectedYear}
-          onLogout={handleLogout}
-          darkMode={darkMode}
-          onToggleDarkMode={toggleDarkMode}
-          hideBalances={hideBalances}
-          onToggleHideBalances={toggleHideBalances}
-        />
-      </div>
-
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm transition-colors duration-200">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">¡Hola, {user.displayName || 'Invitado'}!</h2>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500">{MESES[selectedMonth]} de {selectedYear}</p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            <button 
-              onClick={handleSyncSheets} 
-              disabled={syncingSheets}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 border border-emerald-200 dark:border-emerald-900/40 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 rounded-lg text-[10px] font-bold text-emerald-600 dark:text-emerald-400 transition cursor-pointer disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3 h-3 ${syncingSheets ? 'animate-spin' : ''}`} />
-              <span>{syncingSheets ? 'SINCRONIZANDO...' : 'SINCRONIZAR SHEETS'}</span>
-            </button>
-            <button onClick={() => setIsDriveModalOpen(true)} className="flex items-center gap-1.5 px-2.5 py-1.5 border border-blue-200 dark:border-blue-900/40 hover:bg-blue-50 dark:hover:bg-blue-950/20 rounded-lg text-[10px] font-bold text-blue-600 dark:text-blue-450 transition cursor-pointer"><Cloud className="w-3 h-3" /><span>DRIVE</span></button>
-            <button onClick={handleExportJSON} className="flex items-center gap-1 px-2.5 py-1.5 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 transition cursor-pointer"><Download className="w-3 h-3" /><span>EXPORTAR</span></button>
-            <button onClick={handleClearMonth} className="flex items-center gap-1 px-2.5 py-1.5 border border-rose-100 dark:border-rose-950/40 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg text-[10px] font-bold text-rose-600 dark:text-rose-400 transition cursor-pointer"><Trash2 className="w-3 h-3" /><span>LIMPIAR</span></button>
-          </div>
-        </div>
-        <Dashboard summary={summary} hideBalances={hideBalances} />
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-4 space-y-4">
-            <TransactionForm onAddTransaction={handleAddTransaction} selectedMonth={selectedMonth} selectedYear={selectedYear} />
-            <CalculadoraCuotas />
-            <ConversorRapido />
-          </div>
-          <div className="lg:col-span-8">
-            <TransactionList transactions={activeMonthTransactions} onDeleteTransaction={handleDeleteTransaction} loading={transactionsLoading} hideBalances={hideBalances} />
-          </div>
-        </div>
-      </main>
-      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-4 mt-8 transition-colors duration-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-0.5">
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-sans">Mi Gestor Financiero © {new Date().getFullYear()}</p>
-        </div>
-      </footer>
-      <AnimatePresence>
-        {isDriveModalOpen && (
-          <GoogleDriveModal isOpen={isDriveModalOpen} onClose={() => setIsDriveModalOpen(false)} transactions={transactions} onImportTransactions={handleImportTransactions} currentMonthName={MESES[selectedMonth]} currentYear={selectedYear} driveToken={driveToken} onSetDriveToken={setDriveToken} />
-        )}
-      </AnimatePresence>
-      <ScrollToTop />
-    </div>
-  );
+  const spent=active.filter(t=>t.categoria==='Gasto'||t.categoria==='Gasto efectivo').map(toArs),cash=accounts.filter(a=>a.tipo==='Efectivo').reduce((n,a)=>n+Number(a.saldoInicial||0),0)+cashMovements;
+  const available=cumulativeIncome-cumulativeExpense-cumulativeInvestment, accountBalance=available-cash, patrimonio=accountBalance+cash+investment;
+  return {income,expense,investment,patrimonio,cash,max:Math.max(0,...spent),accounts:accountBalance};
+ },[currentTxs,active,accounts,month,year]);
+ const addTx=async(data:Omit<Transaction,'id'|'createdAt'|'uid'>)=>{if(!user||!data.fecha||!data.motivo.trim()||data.monto<=0||!settings.monedas.includes(data.moneda||'ARS'))throw new Error('Completá fecha, importe, moneda y motivo.'); if(data.categoria==='Transferencia'&&(!data.cuentaOrigen||!data.cuentaDestino||data.cuentaOrigen===data.cuentaDestino))throw new Error('Elegí cuentas distintas para la transferencia.'); const id=crypto.randomUUID(), next:Transaction={...data,id,createdAt:Date.now(),uid:user.uid}; setTxs(prev=>[next,...prev]); try { await setDoc(doc(db,'users',user.uid,'transactions',id),next); } catch { setTxs(prev=>prev.map(x=>x.id===id?{...x,id:`local-${id}`}:x)); }};
+ const deleteTx=async(id:string)=>{const deletedAt=Date.now();setTxs(prev=>prev.map(x=>x.id===id?{...x,deletedAt}:x));if(!id.startsWith('local-'))await setDoc(doc(db,'users',user.uid,'transactions',id),{deletedAt},{merge:true}).catch(()=>undefined)};
+ const restoreTx=async(id:string)=>{setTxs(prev=>prev.map(x=>{if(x.id!==id)return x;const restored={...x};delete restored.deletedAt;return restored}));if(!id.startsWith('local-'))await updateDoc(doc(db,'users',user.uid,'transactions',id),{deletedAt:null}).catch(()=>undefined)};
+ const permanentlyDeleteTx=async(id:string)=>{setTxs(prev=>prev.filter(x=>x.id!==id));if(!id.startsWith('local-'))await deleteDoc(doc(db,'users',user.uid,'transactions',id)).catch(()=>undefined)};
+ const editTx=async(next:Transaction)=>{setTxs(prev=>prev.map(x=>x.id===next.id?next:x));if(!next.id.startsWith('local-'))await setDoc(doc(db,'users',user.uid,'transactions',next.id),next,{merge:true}).catch(()=>undefined)};
+ const exportAll=()=>{if(!user)return; const body={exportedAt:new Date().toISOString(),profile:{displayName:user.displayName,email:user.email},settings,accounts,categories:settings.categorias,fixedExpenses:fixed,quickLinks:settings.quickLinks,loans,investments:txs.filter(t=>t.categoria==='Inversion'),transactions:txs}; const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(body,null,2)],{type:'application/json'}));a.download=`gefi-respaldo-${today()}.json`;a.click();URL.revokeObjectURL(a.href)};
+ if(loading)return <div className="min-h-screen grid place-items-center bg-slate-950 text-white">Cargando GeFi…</div>;
+ if(!user)return <Login onLoginSuccess={()=>{}} darkMode={settings.darkMode} onToggleDarkMode={()=>saveSettings({...settings,darkMode:!settings.darkMode})}/>;
+ const addAccount=async(data?:{nombre:string;tipo:Account['tipo'];saldoInicial:number})=>{let values=data;if(!values){const nombre=prompt('Nombre de la cuenta');if(!nombre?.trim())return;const rawTipo=prompt('Tipo: Banco, Billetera o Efectivo','Banco')||'Banco';const saldo=Number(prompt('Saldo inicial (en moneda de la cuenta)','0'));values={nombre:nombre.trim(),tipo:(['Banco','Billetera','Efectivo'].includes(rawTipo)?rawTipo:'Banco') as Account['tipo'],saldoInicial:isFinite(saldo)?saldo:0}}const id=crypto.randomUUID(), account:Account={id,nombre:values.nombre.trim(),tipo:values.tipo,moneda:settings.monedaBase,saldoInicial:values.saldoInicial,activa:true};setAccounts(p=>[...p,account]);try{await setDoc(doc(db,'users',user.uid,'accounts',id),account)}catch{setAccounts(p=>p.map(x=>x.id===id?{...x,id:`local-${id}`}:x))}};
+ const deleteAccount=async(id:string)=>{setAccounts(p=>p.filter(x=>x.id!==id));if(!id.startsWith('local-'))await deleteDoc(doc(db,'users',user.uid,'accounts',id)).catch(()=>undefined)};
+ const addFixed=async(data?:{nombre:string;monto:number})=>{if(!data||typeof data.nombre!=='string'||!data.nombre.trim()||!Number.isFinite(data.monto)||data.monto<=0){setFixedFormError('');setFixedFormOpen(true);return}const expense:FixedExpense={id:`local-${crypto.randomUUID()}`,nombre:data.nombre.trim(),monto:data.monto,moneda:settings.monedaBase,categoria:'General',cuentaId:accounts[0]?.id||'',frecuencia:'Mensual',proximoVencimiento:today(),estado:'Pendiente'};setFixed(p=>[...p,expense]);setFixedDraft({nombre:'',monto:''});setFixedFormOpen(false);try{await addDoc(collection(db,'users',user.uid,'fixedExpenses'),{...expense,id:undefined})}catch{}};
+ const deleteFixed=async(id:string)=>{setFixed(p=>p.filter(x=>x.id!==id));if(!id.startsWith('local-')) await deleteDoc(doc(db,'users',user.uid,'fixedExpenses',id)).catch(()=>undefined)};
+ const addLoan=async(data?:{persona:string;monto:number;motivo:string;cuentaId:string})=>{if(!data||typeof data.persona!=='string'||!data.persona.trim()||!Number.isFinite(data.monto)||data.monto<=0){setShowSettings(true);return}const values=data;const loan:Loan={id:`local-${crypto.randomUUID()}`,persona:values.persona.trim(),monto:values.monto,moneda:settings.monedaBase,motivo:values.motivo||'',fecha:today(),estado:'Pendiente',cuentaId:values.cuentaId||'',pagos:[]};setLoans(p=>[...p,loan]);await addTx({fecha:today(),categoria:'Prestamo',monto:values.monto,moneda:settings.monedaBase,cotizacion:1,motivo:`Préstamo a ${values.persona.trim()}${values.motivo?` · ${values.motivo}`:''}`,categoriaDetalle:'Préstamo realizado',cuentaOrigen:values.cuentaId||''});try{await addDoc(collection(db,'users',user.uid,'loans'),{...loan,id:undefined})}catch{}};
+ const deleteLoan=async(id:string)=>{setLoans(p=>p.filter(x=>x.id!==id));if(!id.startsWith('local-')) await deleteDoc(doc(db,'users',user.uid,'loans',id)).catch(()=>undefined)};
+ const markLoanPaid=async(loan:Loan)=>{if(loan.estado==='Pagado')return;const paidAt=today();const updated={...loan,estado:'Pagado' as const,pagos:[...loan.pagos,{fecha:paidAt,monto:loan.monto,nota:'Devolución total'}]};setLoans(p=>p.map(x=>x.id===loan.id?updated:x)); await addTx({fecha:paidAt,categoria:'Prestamo',monto:loan.monto,moneda:loan.moneda,cotizacion:1,motivo:`Devolución de préstamo · ${loan.persona}`,categoriaDetalle:'Devolución de préstamo',cuentaDestino:loan.cuentaId});if(!loan.id.startsWith('local-'))await updateDoc(doc(db,'users',user.uid,'loans',loan.id),{estado:'Pagado',pagos:updated.pagos}).catch(()=>undefined)};
+ const correctBalance=async(kind:'accounts'|'cash'|'patrimony'|'investment',target:number)=>{const current=kind==='accounts'?summary.accounts:kind==='cash'?summary.cash:kind==='investment'?summary.investment:summary.patrimonio;const difference=Number((target-current).toFixed(2));if(Math.abs(difference)<0.01)return;const day=Math.min(new Date().getDate(),new Date(year,month+1,0).getDate());const fecha=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;const categoria=kind==='cash'?(difference>0?'Ef+':'Ef-'):kind==='investment'?(difference>0?'Inversion':'Desinversion'):(difference>0?'Ingreso':'Gasto');await addTx({fecha,categoria,monto:Math.abs(difference),moneda:'ARS',cotizacion:1,motivo:`Corrección de ${kind==='accounts'?'dinero en cuenta':kind==='cash'?'efectivo':kind==='investment'?'inversiones':'patrimonio total'}`,categoriaDetalle:'Corrección de saldo'});};
+ const groupedLoans=(()=>{const all=loans.filter(loan=>loan&&typeof loan.persona==='string'&&loan.persona.trim()&&loan.persona.trim().toLowerCase()!=='undefined'&&Number.isFinite(loan.monto)&&loan.monto>0);currentTxs.filter(t=>t.categoria==='Prestamo'&&!t.cuentaDestino).forEach(t=>{const text=(t.motivo||'').replace(/^Préstamo a\s+/i,''),persona=text.split('·')[0].trim()||'Sin especificar';if(persona.toLowerCase()==='undefined'||!Number.isFinite(t.monto)||t.monto<=0)return;if(!all.some(l=>l.persona.toLowerCase()===persona.toLowerCase()&&l.fecha===t.fecha&&Math.abs(l.monto-t.monto)<0.01))all.push({id:`tx-${t.id}`,persona,monto:t.monto,moneda:t.moneda||'ARS',motivo:text.split('·').slice(1).join('·').trim()||t.categoriaDetalle||'Préstamo',fecha:t.fecha,estado:'Pendiente',cuentaId:t.cuentaOrigen,pagos:[]})});const groups=new Map<string,Loan[]>();all.forEach(loan=>{const key=loan.persona.trim().toLowerCase();groups.set(key,[...(groups.get(key)||[]),loan])});return [...groups.values()]})();
+ const savings=active.filter(t=>t.categoria==='Ahorro');
+ const cryptoInvestment=active.filter(t=>t.categoria==='Inversion'&&(/binance/i.test(t.categoriaDetalle||'')||/^(Bitcoin|Ethereum|XRP)$/i.test(t.motivo))).reduce((sum,t)=>sum+toArs(t),0);
+ const greeting=currentHour>=5&&currentHour<12?'Buenos días':currentHour>=12&&currentHour<20?'Buenas tardes':'Buenas noches';
+ return <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100"><Header user={user} selectedMonth={month} selectedYear={year} onMonthChange={setMonth} onYearChange={setYear} onLogout={()=>signOut(auth)} darkMode={settings.darkMode} onToggleDarkMode={()=>saveSettings({...settings,darkMode:!settings.darkMode})} hideBalances={settings.hideBalances} onToggleHideBalances={()=>saveSettings({...settings,hideBalances:!settings.hideBalances})} onOpenSettings={()=>setShowSettings(true)}/><main className="max-w-7xl mx-auto p-4 sm:p-6">
+ <div className="mb-5 rounded-2xl p-5 bg-gradient-to-r from-slate-950 to-blue-950 text-white flex justify-between items-center"><div><p className="text-blue-200 text-xs">RESUMEN DE {MESES[month].toUpperCase()} {year}</p><h2 className="text-xl font-bold">{greeting}, {user.displayName||user.email||'usuario'}.</h2></div><button onClick={()=>setShowSettings(true)} className="text-xs border border-blue-300/40 rounded-lg px-3 py-2">Perfil y configuración</button></div>
+ <section className="grid grid-cols-2 lg:grid-cols-7 gap-3 mb-6">{[['Patrimonio total',summary.patrimonio,'text-blue-700'],['En cuentas',summary.accounts,'text-blue-700'],['Efectivo',summary.cash,'text-cyan-700'],['Ingresos',summary.income,'text-emerald-600'],['Gastos',summary.expense,'text-rose-600'],['Mayor gasto',summary.max,'text-rose-600']].map(([l,v,c])=><div key={String(l)} className="rounded-xl bg-white dark:bg-slate-900 p-3 border border-slate-200 dark:border-slate-800"><p className="text-[10px] uppercase text-slate-400">{l}</p><p className={`font-mono font-bold ${c}`}>{settings.hideBalances?'••••':new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(Number(v))}</p></div>)}<InvestmentSummaryCard total={summary.investment} binance={cryptoInvestment} hidden={settings.hideBalances}/></section>
+ <div className="grid lg:grid-cols-12 gap-6"><div className="lg:col-span-4 space-y-5"><TransactionForm onAddTransaction={addTx} selectedMonth={month} selectedYear={year} accounts={accounts} currencies={settings.monedas} categories={settings.categorias}/><section className="rounded-2xl p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"><div className="flex justify-between"><h3 className="font-bold text-sm">Gastos fijos</h3><button title="Agregar gasto fijo" onClick={addFixed}><Plus className="w-4 h-4 text-blue-600"/></button></div>{fixed.map(f=><div key={f.id} className="text-xs mt-2 flex items-center justify-between gap-2"><span>{f.nombre} · {f.proximoVencimiento}</span><span className="flex gap-2"><button className="text-emerald-600" onClick={()=>addTx({fecha:today(),categoria:'Gasto',monto:f.monto,moneda:f.moneda,cotizacion:1,motivo:f.nombre,categoriaDetalle:f.categoria,cuentaOrigen:f.cuentaId})}>Pagar</button><button className="text-rose-600" onClick={()=>confirm(`¿Eliminar ${f.nombre}?`)&&deleteFixed(f.id)}>Eliminar</button></span></div>)}</section></div><div className="lg:col-span-8"><TransactionList transactions={active} accounts={accounts} loading={false} hideBalances={settings.hideBalances} onDeleteTransaction={deleteTx} onEditTransaction={editTx}/></div></div>
+ <section className="mt-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5"><div className="flex justify-between items-center mb-3"><div><h3 className="font-bold text-sm">Préstamos realizados</h3><p className="text-[11px] text-slate-400">Los préstamos de una misma persona se agrupan. Abrí cada grupo para consultar el detalle.</p></div><button onClick={addLoan} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white">Prestar dinero</button></div>{groupedLoans.length===0?<p className="text-xs text-slate-400 py-3">Todavía no registraste préstamos.</p>:<div className="space-y-2">{groupedLoans.map(group=>{const person=group[0].persona,total=group.reduce((sum,loan)=>sum+(loan.estado==='Pendiente'?loan.monto:0),0);return <details key={person.toLowerCase()} className="rounded-xl bg-slate-50 dark:bg-slate-950 p-3"><summary className="cursor-pointer list-none flex items-center justify-between gap-3 text-xs"><strong>{person}</strong><span className="font-mono font-bold text-amber-600">Total pendiente: {new Intl.NumberFormat('es-AR',{style:'currency',currency:group[0].moneda||'ARS'}).format(total)}</span></summary><div className="mt-3 space-y-2 border-t border-slate-200 dark:border-slate-800 pt-3">{group.sort((a,b)=>a.fecha.localeCompare(b.fecha)).map(loan=><div key={loan.id} className="flex flex-wrap items-center justify-between gap-2 text-xs"><div><span className="font-mono text-slate-400">{loan.fecha}</span><span className="ml-2">{loan.motivo||'Sin detalle'} · {new Intl.NumberFormat('es-AR',{style:'currency',currency:loan.moneda||'ARS'}).format(loan.monto)}</span></div><div className="flex gap-2"><span className={loan.estado==='Pagado'?'text-emerald-600':'text-amber-600'}>{loan.estado}</span>{loan.estado==='Pendiente'&&<button onClick={()=>markLoanPaid(loan)} className="font-bold text-emerald-600">Marcar pagado</button>}<button onClick={()=>confirm(`¿Eliminar este préstamo a ${loan.persona}?`)&&deleteLoan(loan.id)} className="text-rose-600">Eliminar</button></div></div>)}</div></details>})}</div>}</section>
+ {settings.showSavings!==false&&<section className="mt-6 rounded-2xl bg-white dark:bg-slate-900 border border-violet-200 dark:border-violet-900/60 p-5"><h3 className="font-bold text-sm">Ahorros</h3><p className="text-[11px] text-slate-400 mt-1">Ahorros del mes seleccionado. Podés ocultar esta sección desde Configuración.</p>{savings.length===0?<p className="py-3 text-xs text-slate-400">No hay ahorros registrados este mes.</p>:<div className="mt-3 space-y-2">{savings.map(item=><div key={item.id} className="flex justify-between rounded-xl bg-violet-50 dark:bg-violet-950/20 p-3 text-xs"><span>{item.fecha} · {item.motivo}</span><strong className="font-mono text-violet-600">{new Intl.NumberFormat('es-AR',{style:'currency',currency:item.moneda||'ARS'}).format(item.monto)}</strong></div>)}</div>}</section>}
+ </main>{settings.quickLinks.length>0&&<footer className="border-t border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70"><div className="max-w-7xl mx-auto px-4 py-4"><p className="text-[10px] uppercase tracking-wider text-slate-400 text-center mb-2">Accesos directos · clic derecho para editar</p><div className="flex flex-wrap items-center justify-center gap-2">{settings.quickLinks.map(link=>{const label=quickLinkLabel(link.url,link.nombre);return <a key={link.id} href={link.url} target="_blank" rel="noreferrer" aria-label={label} title={label} onContextMenu={e=>{e.preventDefault();setQuickLinkMenu({id:link.id,x:Math.min(e.clientX,window.innerWidth-180),y:Math.min(e.clientY,window.innerHeight-110)})}} className={`flex items-center justify-center gap-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 ${link.nombre?.trim()?'px-3 py-2':'w-10 h-10'}`}><QuickLinkIcon url={link.url} name={link.nombre}/>{link.nombre?.trim()&&<><span>{link.nombre.trim()}</span><ExternalLink className="w-3 h-3 text-slate-400"/></>}</a>})}</div></div></footer>}
+ {quickLinkMenu&&<><button aria-label="Cerrar menú" className="fixed inset-0 z-[69] cursor-default" onClick={()=>setQuickLinkMenu(null)}/><div role="menu" className="fixed z-[70] w-44 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl p-1" style={{left:quickLinkMenu.x,top:quickLinkMenu.y}}>{(()=>{const link=settings.quickLinks.find(x=>x.id===quickLinkMenu.id);if(!link)return null;return <><button role="menuitem" onClick={()=>{setQuickLinkEditError('');setQuickLinkEdit({id:link.id,nombre:link.nombre||'',url:link.url});setQuickLinkMenu(null)}} className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-xs hover:bg-slate-100 dark:hover:bg-slate-800"><Pencil className="w-3.5 h-3.5 text-blue-600"/>Modificar acceso</button><button role="menuitem" onClick={()=>{setQuickLinkDelete(link.id);setQuickLinkMenu(null)}} className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"><Trash2 className="w-3.5 h-3.5"/>Eliminar acceso</button></>})()}</div></>}
+ {quickLinkEdit&&<div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/60 p-4"><div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-2xl"><h3 className="font-bold">Modificar acceso directo</h3><p className="mt-1 text-xs text-slate-400">El nombre es opcional; la URL es obligatoria.</p><label className="block mt-4 text-xs text-slate-500 dark:text-slate-400">Nombre<input autoFocus value={quickLinkEdit.nombre} onChange={e=>setQuickLinkEdit({...quickLinkEdit,nombre:e.target.value})} placeholder="Nombre opcional" className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 p-2.5 text-sm text-slate-900 dark:text-slate-100"/></label><label className="block mt-3 text-xs text-slate-500 dark:text-slate-400">URL<input value={quickLinkEdit.url} onChange={e=>{setQuickLinkEditError('');setQuickLinkEdit({...quickLinkEdit,url:e.target.value})}} onKeyDown={e=>e.key==='Enter'&&saveQuickLinkEdit()} placeholder="https://ejemplo.com" className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 p-2.5 text-sm text-slate-900 dark:text-slate-100"/></label>{quickLinkEditError&&<p className="mt-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 p-2.5 text-xs text-rose-600 dark:text-rose-300">{quickLinkEditError}</p>}<div className="flex justify-end gap-2 mt-5"><button onClick={()=>{setQuickLinkEdit(null);setQuickLinkEditError('')}} className="rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-xs font-bold">Cancelar</button><button onClick={saveQuickLinkEdit} className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white">Guardar cambios</button></div></div></div>}
+ {quickLinkDelete&&<div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/60 p-4"><div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-2xl"><h3 className="font-bold">Eliminar acceso directo</h3><p className="mt-2 text-sm text-slate-500 dark:text-slate-400">¿Querés quitar <strong className="text-slate-800 dark:text-slate-100">{quickLinkLabel(settings.quickLinks.find(x=>x.id===quickLinkDelete)?.url||'',settings.quickLinks.find(x=>x.id===quickLinkDelete)?.nombre)}</strong> de tus accesos directos?</p><div className="flex justify-end gap-2 mt-5"><button onClick={()=>setQuickLinkDelete(null)} className="rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-xs font-bold">Cancelar</button><button onClick={()=>{saveSettings({...settings,quickLinks:settings.quickLinks.filter(x=>x.id!==quickLinkDelete)});setQuickLinkDelete(null)}} className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-bold text-white">Sí, eliminar</button></div></div></div>}
+ {fixedFormOpen&&<div className="fixed inset-0 z-[85] grid place-items-center bg-slate-950/60 p-4" onMouseDown={e=>e.target===e.currentTarget&&setFixedFormOpen(false)}><div role="dialog" aria-modal="true" aria-labelledby="fixed-title" className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-200 dark:border-slate-700"><div className="flex items-center justify-between"><div><h3 id="fixed-title" className="font-bold">Agregar gasto fijo</h3><p className="mt-1 text-xs text-slate-400">Completá los datos y guardá el gasto desde la página.</p></div><button title="Cerrar" onClick={()=>setFixedFormOpen(false)}><X className="w-4 h-4"/></button></div><label className="block mt-5 text-xs text-slate-500">Nombre<input autoFocus value={fixedDraft.nombre} onChange={e=>{setFixedDraft({...fixedDraft,nombre:e.target.value});setFixedFormError('')}} placeholder="Ej: Internet" className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 p-2.5 text-slate-900 dark:text-slate-100"/></label><label className="block mt-3 text-xs text-slate-500">Importe<input type="number" min="0.01" step="any" value={fixedDraft.monto} onChange={e=>{setFixedDraft({...fixedDraft,monto:e.target.value});setFixedFormError('')}} placeholder="0,00" className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 p-2.5 text-slate-900 dark:text-slate-100"/></label>{fixedFormError&&<p className="mt-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 p-2.5 text-xs text-rose-600 dark:text-rose-300">{fixedFormError}</p>}<div className="flex justify-end gap-2 mt-5"><button onClick={()=>setFixedFormOpen(false)} className="rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-xs font-bold">Cancelar</button><button onClick={()=>{const monto=Number(fixedDraft.monto);if(!fixedDraft.nombre.trim()||!Number.isFinite(monto)||monto<=0){setFixedFormError('Ingresá un nombre y un importe mayor que cero.');return}addFixed({nombre:fixedDraft.nombre,monto})}} className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white">Guardar gasto fijo</button></div></div></div>}
+ {showSettings&&<SettingsPanel settings={settings} accounts={accounts} fixed={fixed} loans={loans} trashedTxs={trashedTxs} correctionValues={{accounts:summary.accounts,cash:summary.cash,patrimony:summary.patrimonio,investment:summary.investment}} onCorrectBalance={correctBalance} onRestoreTx={restoreTx} onPermanentlyDeleteTx={permanentlyDeleteTx} onClose={()=>setShowSettings(false)} onSave={saveSettings} onExport={exportAll} onAddAccount={addAccount} onDeleteAccount={deleteAccount} onAddLoan={addLoan}/>}</div>
 }
-export { App };
+
+function SettingsPanel({settings,accounts,loans,trashedTxs,correctionValues,onCorrectBalance,onRestoreTx,onPermanentlyDeleteTx,onClose,onSave,onExport,onAddAccount,onDeleteAccount,onAddLoan}:{settings:UserSettings;accounts:Account[];fixed:FixedExpense[];loans:Loan[];trashedTxs:Transaction[];correctionValues:{accounts:number;cash:number;patrimony:number;investment:number};onCorrectBalance:(kind:'accounts'|'cash'|'patrimony'|'investment',target:number)=>Promise<void>;onRestoreTx:(id:string)=>Promise<void>;onPermanentlyDeleteTx:(id:string)=>Promise<void>;onClose:()=>void;onSave:(x:UserSettings)=>Promise<void>;onExport:()=>void;onAddAccount:(data?:{nombre:string;tipo:Account['tipo'];saldoInicial:number})=>Promise<void>;onDeleteAccount:(id:string)=>Promise<void>;onAddLoan:(data?:{persona:string;monto:number;motivo:string;cuentaId:string})=>Promise<void>}) {
+ const [s,setS]=useState(settings), [newCategory,setNewCategory]=useState(''), [saving,setSaving]=useState(false), [accountForm,setAccountForm]=useState(false), [accountDraft,setAccountDraft]=useState({nombre:'',tipo:'Banco' as Account['tipo'],saldoInicial:0}), [linkForm,setLinkForm]=useState(false), [linkDraft,setLinkDraft]=useState({nombre:'',url:''}), [loanForm,setLoanForm]=useState(false), [loanDraft,setLoanDraft]=useState({persona:'',monto:0,motivo:'',cuentaId:''}), [correctionKind,setCorrectionKind]=useState<'accounts'|'cash'|'patrimony'|'investment'>('accounts'), [correctionTarget,setCorrectionTarget]=useState(String(correctionValues.accounts)), [deleteAccountTarget,setDeleteAccountTarget]=useState<Account|null>(null), [deleteTrashTarget,setDeleteTrashTarget]=useState<Transaction|null>(null), [formError,setFormError]=useState('');
+ const inputClass='block mt-1 p-2 border border-slate-200 dark:border-slate-700 rounded-lg w-full bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100';
+ const addCategory=()=>{const value=newCategory.trim();if(!value||s.categorias.some(x=>x.toLowerCase()===value.toLowerCase()))return;setS({...s,categorias:[...s.categorias,value]});setNewCategory('')};
+ const addLink=()=>{if(!/^https?:\/\//.test(linkDraft.url.trim())){setFormError('Ingresá una URL que comience con http:// o https://. El nombre es opcional.');return}setS({...s,quickLinks:[...s.quickLinks,{id:crypto.randomUUID(),nombre:linkDraft.nombre.trim(),url:linkDraft.url.trim()}]});setLinkDraft({nombre:'',url:''});setLinkForm(false);setFormError('')};
+ const createAccount=async()=>{if(!accountDraft.nombre.trim()||accountDraft.saldoInicial<0){setFormError('Ingresá un nombre y un saldo inicial válido.');return}setSaving(true);await onAddAccount({...accountDraft,nombre:accountDraft.nombre.trim()});setSaving(false);setAccountDraft({nombre:'',tipo:'Banco',saldoInicial:0});setAccountForm(false);setFormError('')};
+ const createLoan=async()=>{if(!loanDraft.persona.trim()||loanDraft.monto<=0){setFormError('Ingresá una persona y un importe mayor que cero.');return}setSaving(true);await onAddLoan({...loanDraft,persona:loanDraft.persona.trim()});setSaving(false);setLoanDraft({persona:'',monto:0,motivo:'',cuentaId:''});setLoanForm(false);setFormError('')};
+ const applyCorrection=async()=>{const target=Number(correctionTarget);if(!Number.isFinite(target)){setFormError('Ingresá un importe válido.');return}const current=correctionValues[correctionKind];if(Math.abs(target-current)<0.01){setFormError('El nuevo importe es igual al saldo actual.');return}setSaving(true);await onCorrectBalance(correctionKind,target);setSaving(false);setFormError('');setCorrectionTarget(String(target))};
+ const save=async()=>{setSaving(true);await onSave(s);setSaving(false);onClose()};
+ return <div className="fixed inset-0 z-[60] bg-slate-950/60 p-4 overflow-auto"><section className="max-w-3xl mx-auto bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-2xl p-6 my-8 shadow-2xl">
+  <div className="flex justify-between items-center"><h2 className="font-bold text-lg">Perfil y configuración</h2><button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800" title="Cerrar sin guardar"><X className="w-4 h-4"/></button></div>
+  <p className="text-xs text-slate-400 mt-1">Los cambios de preferencias se aplican únicamente al presionar Guardar configuración.</p>
+  <div className="grid sm:grid-cols-2 gap-5 mt-5"><label className="text-xs">Moneda base<select value={s.monedaBase} onChange={e=>setS({...s,monedaBase:e.target.value})} className={inputClass}>{s.monedas.map(x=><option key={x} value={x}>{x}</option>)}</select></label><label className="text-xs">Monedas configuradas<input value={s.monedas.join(', ')} onChange={e=>{const monedas=e.target.value.split(',').map(x=>x.trim().toUpperCase()).filter(Boolean);setS({...s,monedas,monedaBase:monedas.includes(s.monedaBase)?s.monedaBase:(monedas[0]||'ARS')})}} className={inputClass}/></label></div>
+  <label className="mt-5 flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-xs"><span><strong className="block">Sección de ahorros</strong><small className="text-slate-400">Mostrar los ahorros en la pantalla principal.</small></span><input type="checkbox" checked={s.showSavings!==false} onChange={e=>setS({...s,showSavings:e.target.checked})} className="w-4 h-4 accent-blue-600"/></label>
+  <div className="mt-6"><h3 className="font-bold text-sm mb-2">Categorías de gasto</h3><div className="flex gap-2"><input value={newCategory} onChange={e=>setNewCategory(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addCategory()} placeholder="Nueva categoría" className={`${inputClass} mt-0`}/><button onClick={addCategory} className="bg-blue-600 text-white rounded-lg px-3 text-xs font-bold">Agregar</button></div><div className="flex flex-wrap gap-2 mt-3">{s.categorias.map(category=><span key={category} className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1.5 text-xs">{category}<button onClick={()=>setS({...s,categorias:s.categorias.filter(x=>x!==category)})} title={`Eliminar ${category}`} className="text-slate-400 hover:text-rose-600"><X className="w-3 h-3"/></button></span>)}</div></div>
+  <div className="mt-6 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/20 p-4"><div><h3 className="font-bold text-sm">Corrección de cuenta</h3><p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">Ajustá un total de la pantalla principal. La diferencia quedará registrada como un movimiento.</p></div><div className="grid sm:grid-cols-2 gap-3 mt-3"><label className="text-xs">Saldo a corregir<select value={correctionKind} onChange={e=>{const kind=e.target.value as 'accounts'|'cash'|'patrimony'|'investment';setCorrectionKind(kind);setCorrectionTarget(String(correctionValues[kind]));setFormError('')}} className={inputClass}><option value="accounts">Dinero en cuenta</option><option value="cash">Efectivo</option><option value="patrimony">Patrimonio total</option><option value="investment">Inversiones del mes</option></select></label><label className="text-xs">Nuevo importe<input type="number" step="any" value={correctionTarget} onChange={e=>{setCorrectionTarget(e.target.value);setFormError('')}} className={inputClass}/></label></div><div className="mt-3 flex flex-wrap items-center justify-between gap-3"><div className="text-xs"><span className="text-slate-500 dark:text-slate-400">Actual: </span><strong>{new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'}).format(correctionValues[correctionKind])}</strong>{Number.isFinite(Number(correctionTarget))&&Math.abs(Number(correctionTarget)-correctionValues[correctionKind])>=0.01&&<span className={`ml-2 font-bold ${Number(correctionTarget)>correctionValues[correctionKind]?'text-emerald-600':'text-rose-600'}`}>{Number(correctionTarget)>correctionValues[correctionKind]?`+ ${new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'}).format(Number(correctionTarget)-correctionValues[correctionKind])} como ${correctionKind==='investment'?'inversión':'ingreso'}`:`- ${new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'}).format(correctionValues[correctionKind]-Number(correctionTarget))} como ${correctionKind==='investment'?'desinversión':'gasto'}`}</span>}</div><button disabled={saving} onClick={applyCorrection} className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-60">{saving?'Aplicando…':'Aplicar corrección'}</button></div></div>
+  <div className="mt-6"><div className="flex justify-between"><h3 className="font-bold text-sm">Cuentas y efectivo</h3><button onClick={()=>{setFormError('');setAccountForm(true)}} className="text-xs text-blue-600 dark:text-blue-400">Agregar</button></div>{accountForm&&<div className="mt-3 grid sm:grid-cols-3 gap-2 rounded-xl bg-slate-50 dark:bg-slate-950 p-3"><input autoFocus value={accountDraft.nombre} onChange={e=>setAccountDraft({...accountDraft,nombre:e.target.value})} placeholder="Nombre de la cuenta" className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 text-xs"/><select value={accountDraft.tipo} onChange={e=>setAccountDraft({...accountDraft,tipo:e.target.value as Account['tipo']})} className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 text-xs"><option>Banco</option><option>Billetera</option><option>Efectivo</option></select><input type="number" min="0" value={accountDraft.saldoInicial} onChange={e=>setAccountDraft({...accountDraft,saldoInicial:Number(e.target.value)})} placeholder="Saldo inicial" className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 text-xs"/><div className="sm:col-span-3 flex justify-end gap-2"><button onClick={()=>setAccountForm(false)} className="border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs">Cancelar</button><button onClick={createAccount} className="bg-blue-600 text-white rounded-lg px-3 py-1.5 text-xs font-bold">Guardar cuenta</button></div></div>}{accounts.length===0?<p className="text-xs text-slate-400 py-2">No hay cuentas configuradas.</p>:accounts.map(a=><div key={a.id} className="flex justify-between items-center text-xs py-2 border-b border-slate-200 dark:border-slate-800"><span>{a.nombre} · {a.tipo} · {a.moneda}</span><button onClick={()=>{setFormError('');setDeleteAccountTarget(a)}} className="inline-flex items-center gap-1 text-rose-600"><Trash2 className="w-3 h-3"/> Eliminar</button></div>)}</div>
+  <div className="mt-6"><div className="flex justify-between"><h3 className="font-bold text-sm">Préstamos</h3><button onClick={()=>{setFormError('');setLoanForm(true)}} className="text-xs text-blue-600 dark:text-blue-400">Agregar</button></div>{loanForm&&<div className="mt-3 grid sm:grid-cols-2 gap-2 rounded-xl bg-slate-50 dark:bg-slate-950 p-3"><input autoFocus value={loanDraft.persona} onChange={e=>setLoanDraft({...loanDraft,persona:e.target.value})} placeholder="Persona" className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 text-xs"/><input type="number" min="0.01" value={loanDraft.monto} onChange={e=>setLoanDraft({...loanDraft,monto:Number(e.target.value)})} placeholder="Importe" className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 text-xs"/><input value={loanDraft.motivo} onChange={e=>setLoanDraft({...loanDraft,motivo:e.target.value})} placeholder="Motivo (opcional)" className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 text-xs"/><select value={loanDraft.cuentaId} onChange={e=>setLoanDraft({...loanDraft,cuentaId:e.target.value})} className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 text-xs"><option value="">Sin cuenta</option>{accounts.map(a=><option key={a.id} value={a.id}>{a.nombre}</option>)}</select><div className="sm:col-span-2 flex justify-end gap-2"><button onClick={()=>setLoanForm(false)} className="border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs">Cancelar</button><button onClick={createLoan} className="bg-blue-600 text-white rounded-lg px-3 py-1.5 text-xs font-bold">Guardar préstamo</button></div></div>}{loans.map(l=><p className="text-xs py-1" key={l.id}>{l.persona}: {l.monto} {l.moneda} · {l.estado}</p>)}</div>
+  <div className="mt-6"><div className="flex justify-between"><div><h3 className="font-bold text-sm">Accesos directos</h3><p className="text-[10px] text-slate-400">La URL es obligatoria; el nombre es opcional.</p></div><button onClick={()=>{setFormError('');setLinkForm(true)}} className="text-xs text-blue-600 dark:text-blue-400">Agregar acceso</button></div>{linkForm&&<div className="mt-3 grid sm:grid-cols-2 gap-2 rounded-xl bg-slate-50 dark:bg-slate-950 p-3"><input value={linkDraft.nombre} onChange={e=>setLinkDraft({...linkDraft,nombre:e.target.value})} placeholder="Nombre (opcional)" className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 text-xs"/><input autoFocus value={linkDraft.url} onChange={e=>setLinkDraft({...linkDraft,url:e.target.value})} placeholder="https://ejemplo.com (obligatorio)" className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 text-xs"/><div className="sm:col-span-2 flex justify-end gap-2"><button onClick={()=>setLinkForm(false)} className="border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs">Cancelar</button><button onClick={addLink} className="bg-blue-600 text-white rounded-lg px-3 py-1.5 text-xs font-bold">Agregar acceso</button></div></div>}{s.quickLinks.map(q=><div className="flex justify-between text-xs py-2 border-b border-slate-200 dark:border-slate-800" key={q.id}><a href={q.url} target="_blank" rel="noreferrer" title={quickLinkLabel(q.url,q.nombre)} className="text-blue-600 dark:text-blue-400 flex items-center gap-2"><QuickLinkIcon url={q.url} name={q.nombre}/>{quickLinkLabel(q.url,q.nombre)}<ExternalLink className="w-3 h-3"/></a><button onClick={()=>setS({...s,quickLinks:s.quickLinks.filter(x=>x.id!==q.id)})} className="text-rose-600">Eliminar</button></div>)}</div>
+  <div className="mt-6"><div className="flex items-center justify-between"><div><h3 className="font-bold text-sm">Papelera de movimientos</h3><p className="text-[10px] text-slate-400">Los movimientos se eliminan definitivamente después de 30 días.</p></div><span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold">{trashedTxs.length}</span></div>{trashedTxs.length===0?<p className="py-3 text-xs text-slate-400">La papelera está vacía.</p>:<div className="mt-2 max-h-52 overflow-auto">{trashedTxs.map(t=>{const days=Math.max(1,30-Math.floor((Date.now()-(t.deletedAt||Date.now()))/(24*60*60*1000)));return <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 py-2 text-xs"><div><strong>{t.motivo}</strong><span className="ml-2 text-slate-400">{t.monto} {t.moneda||'ARS'} · {days} días restantes</span></div><div className="flex gap-2"><button onClick={()=>onRestoreTx(t.id)} className="font-bold text-emerald-600">Restaurar</button><button onClick={()=>setDeleteTrashTarget(t)} className="text-rose-600">Eliminar definitivamente</button></div></div>})}</div>}</div>
+  {formError&&<p className="mt-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 p-2.5 text-xs text-rose-600 dark:text-rose-300">{formError}</p>}
+  <div className="mt-7 flex flex-wrap gap-2"><button disabled={saving} onClick={save} className="bg-blue-600 disabled:opacity-60 text-white rounded-lg px-4 py-2 text-xs font-bold">{saving?'Guardando…':'Guardar configuración'}</button><button onClick={onClose} className="border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 text-xs">Cancelar</button><button onClick={onExport} className="border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 text-xs flex gap-1 items-center"><Download className="w-3 h-3"/> Descargar JSON</button></div>
+  {deleteAccountTarget&&<div className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/65 p-4"><div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-2xl"><h3 className="font-bold">Eliminar cuenta</h3><p className="mt-2 text-sm text-slate-500 dark:text-slate-400">¿Querés eliminar <strong className="text-slate-800 dark:text-slate-100">{deleteAccountTarget.nombre}</strong>? Los movimientos existentes conservarán sus importes.</p><div className="flex justify-end gap-2 mt-5"><button onClick={()=>setDeleteAccountTarget(null)} className="border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 text-xs font-bold">Cancelar</button><button onClick={async()=>{await onDeleteAccount(deleteAccountTarget.id);setDeleteAccountTarget(null)}} className="bg-rose-600 text-white rounded-lg px-4 py-2 text-xs font-bold">Sí, eliminar</button></div></div></div>}
+  {deleteTrashTarget&&<div className="fixed inset-0 z-[95] grid place-items-center bg-slate-950/65 p-4"><div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-2xl"><h3 className="font-bold">Eliminar definitivamente</h3><p className="mt-2 text-sm text-slate-500 dark:text-slate-400">¿Querés eliminar para siempre <strong className="text-slate-800 dark:text-slate-100">{deleteTrashTarget.motivo}</strong>? Después no se podrá recuperar.</p><div className="flex justify-end gap-2 mt-5"><button onClick={()=>setDeleteTrashTarget(null)} className="border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 text-xs font-bold">Cancelar</button><button onClick={async()=>{await onPermanentlyDeleteTx(deleteTrashTarget.id);setDeleteTrashTarget(null)}} className="bg-rose-600 text-white rounded-lg px-4 py-2 text-xs font-bold">Eliminar para siempre</button></div></div></div>}
+ </section></div>
+}

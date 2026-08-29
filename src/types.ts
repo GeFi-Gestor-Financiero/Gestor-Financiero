@@ -1,12 +1,27 @@
+export type TransactionType = 'Ingreso' | 'Gasto' | 'Inversion' | 'Desinversion' | 'Ahorro' | 'Efectivo' | 'Gasto efectivo' | 'Transferencia' | 'Prestamo' | 'Ef+' | 'Ef-';
+
 export interface Transaction {
   id: string;
-  fecha: string; // Format: YYYY-MM-DD
-  categoria: 'Ingreso' | 'Gasto' | 'Inversion' | 'Ef+' | 'Ef-';
+  fecha: string;
+  categoria: TransactionType;
   monto: number;
+  moneda?: string;
+  cotizacion?: number;
   motivo: string;
+  categoriaDetalle?: string;
+  cuentaOrigen?: string;
+  cuentaDestino?: string;
   createdAt: number;
   uid: string;
+  deletedAt?: number;
 }
+
+export interface Account { id: string; nombre: string; tipo: 'Banco' | 'Billetera' | 'Efectivo'; moneda: string; saldoInicial: number; activa: boolean; }
+export interface FixedExpense { id: string; nombre: string; monto: number; moneda: string; categoria: string; cuentaId: string; frecuencia: 'Mensual' | 'Semanal' | 'Anual'; proximoVencimiento: string; estado: 'Pendiente' | 'Pagado'; }
+export interface LoanPayment { fecha: string; monto: number; nota?: string; }
+export interface Loan { id: string; persona: string; monto: number; moneda: string; motivo: string; fecha: string; estado: 'Pendiente' | 'Pagado'; cuentaId?: string; fechaEstimada?: string; pagos: LoanPayment[]; }
+export interface QuickLink { id: string; nombre: string; url: string; }
+export interface UserSettings { darkMode: boolean; hideBalances: boolean; monedaBase: string; monedas: string[]; categorias: string[]; widgets: string[]; quickLinks: QuickLink[]; showSavings?: boolean; }
 
 export interface MonthSummary {
   plataInicial: number;
@@ -16,4 +31,6 @@ export interface MonthSummary {
   dineroEnCuenta: number; // plataInicial + ingresos - gastos - inversiones (only bank / non-cash entries)
   efectivo: number; // sum of Ef+ minus Ef- up to the selected month
   totalActual: number; // dineroEnCuenta + efectivo
+  patrimonioTotal?: number;
+  mayorGasto?: number;
 }

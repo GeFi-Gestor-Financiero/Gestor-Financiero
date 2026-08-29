@@ -1,19 +1,18 @@
 import React, { useState } from 'react';
-import { Calendar, Tag, DollarSign, PenTool, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { Account, Transaction, TransactionType } from '../types';
 import { motion } from 'motion/react';
 
 interface TransactionFormProps {
-  onAddTransaction: (data: {
-    fecha: string;
-    categoria: 'Ingreso' | 'Gasto' | 'Inversion' | 'Ef+' | 'Ef-';
-    monto: number;
-    motivo: string;
-  }) => Promise<void>;
+  onAddTransaction: (data: Omit<Transaction, 'id' | 'createdAt' | 'uid'>) => Promise<void>;
   selectedMonth: number;
   selectedYear: number;
+  accounts: Account[];
+  currencies: string[];
+  categories: string[];
 }
 
-export default function TransactionForm({ onAddTransaction, selectedMonth, selectedYear }: TransactionFormProps) {
+export default function TransactionForm({ onAddTransaction, selectedMonth, selectedYear, accounts, currencies, categories }: TransactionFormProps) {
   // Set default date as current date formatted in selected month/year to prevent out of bounds
   const getInitialDateString = () => {
     const today = new Date();
@@ -30,10 +29,16 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
   };
 
   const [fecha, setFecha] = useState<string>(getInitialDateString());
-  const [categoria, setCategoria] = useState<'Ingreso' | 'Gasto' | 'Inversion' | 'Ef+' | 'Ef-'>('Ingreso');
+  const [categoria, setCategoria] = useState<TransactionType>('Ingreso');
   const [monto, setMonto] = useState<string>('');
   const [motivo, setMotivo] = useState<string>('');
+  const [moneda, setMoneda] = useState('ARS');
+  const [cotizacion, setCotizacion] = useState('1');
+  const [categoriaDetalle, setCategoriaDetalle] = useState('General');
+  const [cuentaOrigen, setCuentaOrigen] = useState('');
+  const [cuentaDestino, setCuentaDestino] = useState('');
   const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Sync date input if user shifts selected month/year and current date is no longer in range
   React.useEffect(() => {
@@ -42,9 +47,10 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     const valMonto = parseFloat(monto);
     if (!fecha || !categoria || isNaN(valMonto) || valMonto <= 0 || !motivo.trim()) {
-      return;
+      setError('Completá fecha, importe y motivo con valores válidos.'); return;
     }
 
     setLoading(true);
@@ -52,14 +58,15 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
       await onAddTransaction({
         fecha,
         categoria,
-        monto: valMonto,
-        motivo: motivo.trim()
+        monto: valMonto, motivo: motivo.trim(), moneda, cotizacion: Number(cotizacion) || 1,
+        categoriaDetalle, cuentaOrigen: cuentaOrigen || undefined, cuentaDestino: cuentaDestino || undefined
       });
       // Reset form but keep date and category for user convenience
       setMonto('');
       setMotivo('');
     } catch (error) {
       console.error("Error al guardar la transacción:", error);
+      setError(error instanceof Error ? error.message : 'No se pudo guardar el movimiento.');
     } finally {
       setLoading(false);
     }
@@ -73,6 +80,7 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
       </h3>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {error && <p role="alert" className="rounded-lg bg-rose-50 dark:bg-rose-950/30 px-3 py-2 text-xs text-rose-700 dark:text-rose-300">{error}</p>}
         {/* Row for Fecha & Categoría */}
         <div className="grid grid-cols-2 gap-3">
           {/* Fecha */}
@@ -102,10 +110,18 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
               <option value="Ingreso" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Ingreso</option>
               <option value="Gasto" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Gasto</option>
               <option value="Inversion" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Inversión</option>
+              <option value="Ahorro" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Ahorro</option>
               <option value="Ef+" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Ef+ (Efectivo)</option>
               <option value="Ef-" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Ef- (Efectivo)</option>
+              <option value="Transferencia">Transferencia</option>
+              <option value="Prestamo">Préstamo</option>
             </select>
           </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">Moneda</label><select value={moneda} onChange={e => setMoneda(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">{currencies.map(c => <option key={c}>{c}</option>)}</select></div>
+          <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">Cotización a ARS</label><input type="number" min="0.0001" step="any" value={cotizacion} onChange={e => setCotizacion(e.target.value)} disabled={moneda === 'ARS'} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 disabled:opacity-50" /></div>
         </div>
 
         {/* Monto */}
@@ -127,6 +143,12 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
             />
           </div>
         </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">Categoría</label><select value={categoriaDetalle} onChange={e => setCategoriaDetalle(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">{categories.map(c => <option key={c}>{c}</option>)}</select></div>
+          <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">Cuenta origen</label><select value={cuentaOrigen} onChange={e => setCuentaOrigen(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"><option value="">Sin cuenta</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></div>
+        </div>
+        {categoria === 'Transferencia' && <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">Cuenta destino</label><select value={cuentaDestino} onChange={e => setCuentaDestino(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"><option value="">Seleccionar</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></div>}
 
         {/* Motivo */}
         <div className="space-y-1.5">

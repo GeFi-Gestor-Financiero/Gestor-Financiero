@@ -1,5 +1,5 @@
 import React from 'react';
-import { LogOut, User, Calendar, ChevronLeft, ChevronRight, TrendingUp, Sun, Moon, Eye, EyeOff } from 'lucide-react';
+import { LogOut, User, Calendar, ChevronLeft, ChevronRight, TrendingUp, Sun, Moon, Eye, EyeOff, Settings } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 import { auth } from '../firebase';
 
@@ -14,6 +14,7 @@ interface HeaderProps {
   onToggleDarkMode: () => void;
   hideBalances: boolean;
   onToggleHideBalances: () => void;
+  onOpenSettings: () => void;
 }
 
 const MESES = [
@@ -31,7 +32,7 @@ export default function Header({
   darkMode,
   onToggleDarkMode,
   hideBalances,
-  onToggleHideBalances
+  onToggleHideBalances, onOpenSettings
 }: HeaderProps) {
 
   const handlePrevMonth = () => {
@@ -163,6 +164,11 @@ export default function Header({
                   {darkMode ? <Sun className="w-3.5 h-3.5 text-amber-500" /> : <Moon className="w-3.5 h-3.5 text-slate-500" />}
                 </button>
 
+                <button
+                  onClick={onOpenSettings}
+                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  title="Perfil y configuración"
+                ><Settings className="w-3.5 h-3.5" /></button>
                 <button
                   onClick={onLogout}
                   className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg transition border border-transparent hover:border-rose-100 dark:hover:border-rose-950/60 cursor-pointer"

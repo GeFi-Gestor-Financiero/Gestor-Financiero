@@ -1,232 +1,28 @@
-import React, { useState } from 'react';
-import { Trash2, Search, Filter, AlertCircle, Info, ArrowUpRight, ArrowDownRight, PiggyBank, Coins } from 'lucide-react';
-import { Transaction } from '../types';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useEffect, useState } from 'react';
+import { Trash2, Pencil, Search, ChevronDown, ChevronUp, X, AlertTriangle } from 'lucide-react';
+import { Account, Transaction } from '../types';
 
-interface TransactionListProps {
-  transactions: Transaction[];
-  onDeleteTransaction: (id: string) => Promise<void>;
-  loading: boolean;
-  hideBalances?: boolean;
+export default function TransactionList({ transactions, onDeleteTransaction, onEditTransaction, loading, hideBalances = false, accounts = [] }: { transactions: Transaction[]; onDeleteTransaction: (id: string) => Promise<void>; onEditTransaction: (t: Transaction) => Promise<void>; loading: boolean; hideBalances?: boolean; accounts?: Account[] }) {
+  const [search, setSearch] = useState(''); const [type, setType] = useState(''); const [currency, setCurrency] = useState(''); const [account, setAccount] = useState(''); const [expanded,setExpanded]=useState(false);
+  const [editDraft,setEditDraft]=useState<Transaction|null>(null), [deleteTarget,setDeleteTarget]=useState<Transaction|null>(null), [saving,setSaving]=useState(false), [modalError,setModalError]=useState('');
+  useEffect(() => {
+    const syncEditedDate = (event: Event) => {
+      const input = event.target as HTMLInputElement;
+      if (input.type !== 'date' || !input.closest('[role="dialog"]')) return;
+      setEditDraft(current => current ? {...current, fecha: input.value} : current);
+    };
+    document.addEventListener('input', syncEditedDate, true);
+    return () => document.removeEventListener('input', syncEditedDate, true);
+  }, []);
+  const format = (n: number, c = 'ARS') => new Intl.NumberFormat('es-AR', { style: 'currency', currency: c, maximumFractionDigits: 2 }).format(n);
+  const list = transactions.filter(t => (!search || `${t.motivo} ${t.categoriaDetalle || ''}`.toLowerCase().includes(search.toLowerCase())) && (!type || t.categoria === type) && (!currency || (t.moneda || 'ARS') === currency) && (!account || t.cuentaOrigen === account || t.cuentaDestino === account)).sort((a,b) => b.fecha.localeCompare(a.fecha) || b.createdAt-a.createdAt);
+  const visibleList=expanded?list:list.slice(0,10);
+  const saveEdit=async()=>{if(!editDraft)return;if(!editDraft.motivo.trim()||!editDraft.fecha||Number(editDraft.monto)<=0){setModalError('Completá la fecha, el motivo y un importe mayor que cero.');return}setSaving(true);setModalError('');try{await onEditTransaction({...editDraft,motivo:editDraft.motivo.trim(),monto:Number(editDraft.monto)});setEditDraft(null)}catch{setModalError('No se pudo guardar el cambio. Intentá nuevamente.')}finally{setSaving(false)}};
+  const confirmDelete=async()=>{if(!deleteTarget)return;setSaving(true);try{await onDeleteTransaction(deleteTarget.id);setDeleteTarget(null)}catch{setModalError('No se pudo eliminar el movimiento. Intentá nuevamente.')}finally{setSaving(false)}};
+  return <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+    <div className="flex flex-wrap gap-2 items-center justify-between mb-4"><h3 className="text-sm font-bold">Historial de movimientos <span className="text-slate-400 text-xs">({list.length})</span></h3><div className="flex flex-wrap gap-2"><div className="relative"><Search className="w-3.5 h-3.5 absolute left-2 top-2 text-slate-400"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar" className="pl-7 p-1.5 text-xs rounded border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"/></div><select value={type} onChange={e=>setType(e.target.value)} className="p-1.5 text-xs rounded border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"><option value="">Todos los tipos</option>{['Ingreso','Gasto','Inversion','Efectivo','Gasto efectivo','Transferencia','Prestamo','Ef+','Ef-'].map(x=><option key={x}>{x}</option>)}</select><select value={currency} onChange={e=>setCurrency(e.target.value)} className="p-1.5 text-xs rounded border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"><option value="">Monedas</option>{[...new Set(transactions.map(t=>t.moneda || 'ARS'))].map(x=><option key={x}>{x}</option>)}</select><select value={account} onChange={e=>setAccount(e.target.value)} className="p-1.5 text-xs rounded border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"><option value="">Cuentas</option>{accounts.map(x=><option key={x.id} value={x.id}>{x.nombre}</option>)}</select></div></div>
+    {loading ? <p className="text-sm text-slate-400 py-8 text-center">Cargando movimientos…</p> : <div><div className="overflow-auto"><table className="w-full text-xs"><thead className="text-left text-slate-400 border-b dark:border-slate-800"><tr><th className="p-2">Fecha</th><th className="p-2">Tipo</th><th className="p-2">Detalle</th><th className="p-2">Cuenta</th><th className="p-2 text-right">Importe</th><th/></tr></thead><tbody>{visibleList.map(t=>{const color=t.categoria==='Ingreso'||t.categoria==='Ef+'?'text-emerald-600':t.categoria==='Inversion'?'text-amber-600':t.categoria==='Ahorro'?'text-violet-600 dark:text-violet-400':t.categoria==='Transferencia'?'text-blue-600':'text-rose-600'; const acct=accounts.find(a=>a.id===t.cuentaOrigen)?.nombre || accounts.find(a=>a.id===t.cuentaDestino)?.nombre || '—'; return <tr key={t.id} className="border-b dark:border-slate-800/70"><td className="p-2">{t.fecha}</td><td className="p-2"><span className={color}>{t.categoria}</span></td><td className="p-2">{t.motivo}<small className="block text-slate-400">{t.categoriaDetalle}</small></td><td className="p-2">{acct}</td><td className={`p-2 text-right font-mono font-bold ${color}`}>{hideBalances?'••••':format(t.monto,t.moneda||'ARS')}</td><td className="p-2 whitespace-nowrap"><button title="Editar" onClick={()=>{setModalError('');setEditDraft({...t})}} className="p-1 text-slate-400 hover:text-blue-600"><Pencil className="w-3.5 h-3.5"/></button><button title="Eliminar" onClick={()=>{setModalError('');setDeleteTarget(t)}} className="p-1 text-slate-400 hover:text-rose-600"><Trash2 className="w-3.5 h-3.5"/></button></td></tr>})}</tbody></table>{!list.length&&<p className="py-8 text-center text-slate-400">No hay movimientos con esos filtros.</p>}</div>{list.length>10&&<button onClick={()=>setExpanded(x=>!x)} className="mx-auto mt-4 flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400">{expanded?<><ChevronUp className="w-4 h-4"/>Ver menos</>:<><ChevronDown className="w-4 h-4"/>Ver más ({list.length-10})</>}</button>}</div>}
+    {editDraft&&<div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/60 backdrop-blur-sm p-4" onMouseDown={e=>e.target===e.currentTarget&&setEditDraft(null)}><div role="dialog" aria-modal="true" aria-labelledby="edit-title" className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-200 dark:border-slate-700"><div className="flex items-center justify-between"><div><h3 id="edit-title" className="font-bold text-base">Modificar movimiento</h3><p className="text-xs text-slate-400 mt-1">Editá los datos y presioná Guardar cambios.</p></div><button onClick={()=>setEditDraft(null)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><X className="w-4 h-4"/></button></div><div className="grid grid-cols-2 gap-3 mt-5"><label className="text-xs text-slate-500 dark:text-slate-400">Fecha<input type="date" value={editDraft.fecha} onChange={e=>setEditDraft({...editDraft,fecha:e.target.value})} className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 p-2.5 text-slate-900 dark:text-slate-100"/></label><label className="text-xs text-slate-500 dark:text-slate-400">Importe<input type="number" min="0.01" step="any" value={editDraft.monto} onChange={e=>setEditDraft({...editDraft,monto:Number(e.target.value)})} className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 p-2.5 text-slate-900 dark:text-slate-100"/></label><label className="col-span-2 text-xs text-slate-500 dark:text-slate-400">Motivo / descripción<input autoFocus value={editDraft.motivo} onChange={e=>setEditDraft({...editDraft,motivo:e.target.value})} className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 p-2.5 text-slate-900 dark:text-slate-100"/></label><label className="col-span-2 text-xs text-slate-500 dark:text-slate-400">Categoría / detalle<input value={editDraft.categoriaDetalle||''} onChange={e=>setEditDraft({...editDraft,categoriaDetalle:e.target.value})} className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 p-2.5 text-slate-900 dark:text-slate-100"/></label></div>{modalError&&<p className="mt-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 p-2.5 text-xs text-rose-600 dark:text-rose-300">{modalError}</p>}<div className="flex justify-end gap-2 mt-5"><button onClick={()=>setEditDraft(null)} className="rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-xs font-bold">Cancelar</button><button disabled={saving} onClick={saveEdit} className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-60">{saving?'Guardando…':'Guardar cambios'}</button></div></div></div>}
+    {deleteTarget&&<div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/60 backdrop-blur-sm p-4" onMouseDown={e=>e.target===e.currentTarget&&setDeleteTarget(null)}><div role="alertdialog" aria-modal="true" aria-labelledby="delete-title" className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-200 dark:border-slate-700"><div className="flex gap-3"><div className="grid place-items-center w-10 h-10 shrink-0 rounded-full bg-rose-100 dark:bg-rose-950/40"><AlertTriangle className="w-5 h-5 text-rose-600"/></div><div><h3 id="delete-title" className="font-bold text-base">Enviar a la papelera</h3><p className="text-sm text-slate-500 dark:text-slate-400 mt-1">¿Querés enviar <strong className="text-slate-800 dark:text-slate-100">{deleteTarget.motivo}</strong> a la papelera? Podrás restaurarlo durante 30 días desde Configuración.</p></div></div>{modalError&&<p className="mt-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 p-2.5 text-xs text-rose-600 dark:text-rose-300">{modalError}</p>}<div className="flex justify-end gap-2 mt-5"><button onClick={()=>setDeleteTarget(null)} className="rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-xs font-bold">Cancelar</button><button disabled={saving} onClick={confirmDelete} className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-60">{saving?'Moviendo…':'Enviar a papelera'}</button></div></div></div>}
+  </section>;
 }
-
-export default function TransactionList({ transactions, onDeleteTransaction, loading, hideBalances = false }: TransactionListProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-
-  // Format currency in Spanish AR style
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'ARS',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(val).replace('ARS', '$');
-  };
-
-  const getCategoryStyles = (cat: string) => {
-    switch (cat) {
-      case 'Ingreso':
-        return {
-          bg: 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/35',
-          dot: 'bg-emerald-500',
-          icon: <ArrowUpRight className="w-3 h-3" />
-        };
-      case 'Gasto':
-        return {
-          bg: 'bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border-rose-100 dark:border-rose-900/35',
-          dot: 'bg-rose-500',
-          icon: <ArrowDownRight className="w-3 h-3" />
-        };
-      case 'Inversion':
-        return {
-          bg: 'bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/35',
-          dot: 'bg-amber-500',
-          icon: <PiggyBank className="w-3 h-3" />
-        };
-      case 'Ef+':
-        return {
-          bg: 'bg-cyan-50 dark:bg-cyan-950/20 text-cyan-700 dark:text-cyan-400 border-cyan-100 dark:border-cyan-900/35',
-          dot: 'bg-cyan-500',
-          icon: <Coins className="w-3 h-3" />
-        };
-      case 'Ef-':
-        return {
-          bg: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700',
-          dot: 'bg-slate-500',
-          icon: <Coins className="w-3 h-3" />
-        };
-      default:
-        return {
-          bg: 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
-          dot: 'bg-slate-400',
-          icon: null
-        };
-    }
-  };
-
-  // Filter transactions
-  const filteredTransactions = transactions.filter((t) => {
-    const matchesSearch = t.motivo.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || t.categoria === categoryFilter;
-    return matchesSearch && matchesCategory;
-  }).sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-
-  return (
-    <div id="transaction-list-card" className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm transition-colors duration-200">
-      
-      {/* Search & Filter Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 pb-4 border-b border-slate-100 dark:border-slate-800">
-        <div>
-          <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-            Historial del Mes
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded uppercase transition-colors duration-200">
-              {filteredTransactions.length} mov.
-            </span>
-          </h3>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-2 max-w-md w-full md:w-auto">
-          {/* Search bar */}
-          <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Buscar motivo..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-700 dark:text-slate-200 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-sans transition-colors duration-150"
-            />
-          </div>
-
-          {/* Category filter */}
-          <div className="relative">
-            <Filter className="w-3 h-3 text-slate-400 dark:text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg pl-7 pr-3 py-1.5 text-xs text-slate-700 dark:text-slate-200 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-sans cursor-pointer appearance-none min-w-[110px] transition-colors duration-150"
-            >
-              <option value="all" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Todas</option>
-              <option value="Ingreso" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Ingresos</option>
-              <option value="Gasto" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Gastos</option>
-              <option value="Inversion" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Inversión</option>
-              <option value="Ef+" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Ef (+)</option>
-              <option value="Ef-" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Ef (-)</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Transaction Table / List */}
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-          <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-2" />
-          <p className="text-[11px] font-semibold">Cargando movimientos...</p>
-        </div>
-      ) : filteredTransactions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center text-center py-12 px-4 bg-slate-50/50 dark:bg-slate-950/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-850">
-          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 mb-3">
-            <AlertCircle className="w-5 h-5" />
-          </div>
-          <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">
-            No hay movimientos registrados
-          </h4>
-          <p className="text-[11px] text-slate-400 dark:text-slate-500 max-w-xs leading-relaxed">
-            {searchTerm || categoryFilter !== 'all' 
-              ? 'No hay resultados para el filtro actual. Prueba con otros términos.'
-              : 'Agrega tu primer ingreso, gasto, inversión o ajuste de efectivo usando el formulario lateral.'}
-          </p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto -mx-5 sm:-mx-0">
-          <div className="inline-block min-w-full align-middle">
-            <div className="overflow-hidden border border-slate-200 dark:border-slate-800 rounded-lg">
-              <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
-                <thead className="bg-slate-50 dark:bg-slate-950">
-                  <tr>
-                    <th scope="col" className="px-4 py-2 text-left text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider font-sans">
-                      Fecha
-                    </th>
-                    <th scope="col" className="px-4 py-2 text-left text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider font-sans">
-                      Categoría
-                    </th>
-                    <th scope="col" className="px-4 py-2 text-left text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider font-sans">
-                      Motivo / Concepto
-                    </th>
-                    <th scope="col" className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider font-sans">
-                      Monto
-                    </th>
-                    <th scope="col" className="px-4 py-2 text-center text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider font-sans">
-                      Acción
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
-                  <AnimatePresence initial={false}>
-                    {filteredTransactions.map((t) => {
-                      const catStyle = getCategoryStyles(t.categoria);
-                      return (
-                        <motion.tr
-                          key={t.id}
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.1 }}
-                          className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors"
-                        >
-                          <td className="px-4 py-2.5 whitespace-nowrap text-[11px] font-medium text-slate-500 dark:text-slate-400 font-mono">
-                            {t.fecha}
-                          </td>
-                          <td className="px-4 py-2.5 whitespace-nowrap">
-                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide border ${catStyle.bg}`}>
-                              {t.categoria}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2.5 text-[11px] text-slate-700 dark:text-slate-300 font-medium max-w-[180px] truncate font-sans" title={t.motivo}>
-                            {t.motivo}
-                          </td>
-                          <td className="px-4 py-2.5 whitespace-nowrap text-right text-[11px] font-bold font-mono">
-                            <span className={
-                              t.categoria === 'Ingreso' || t.categoria === 'Ef+' 
-                                ? 'text-emerald-600 dark:text-emerald-400' 
-                                : t.categoria === 'Gasto' || t.categoria === 'Ef-' 
-                                  ? 'text-rose-600 dark:text-rose-400' 
-                                  : 'text-amber-600 dark:text-amber-400'
-                            }>
-                              {hideBalances ? '••••' : (
-                                <>
-                                  {t.categoria === 'Gasto' || t.categoria === 'Inversion' || t.categoria === 'Ef-' ? '-' : '+'}
-                                  {formatCurrency(t.monto)}
-                                </>
-                              )}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2.5 whitespace-nowrap text-center">
-                            <button
-                              onClick={() => {
-                                if (confirm(`¿Estás seguro de eliminar el registro "${t.motivo}"?`)) {
-                                  onDeleteTransaction(t.id);
-                                }
-                              }}
-                              className="p-1 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-450 rounded transition cursor-pointer"
-                              title="Eliminar registro"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </td>
-                        </motion.tr>
-                      );
-                    })}
-                  </AnimatePresence>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-    </div>
-  );
-}
-export { TransactionList };
