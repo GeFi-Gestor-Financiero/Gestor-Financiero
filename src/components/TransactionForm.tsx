@@ -122,7 +122,7 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">Moneda</label><select value={moneda} onChange={e => setMoneda(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">{currencies.map(c => <option key={c}>{c}</option>)}</select></div>
-          <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">Cotización a ARS</label><input type="number" min="0.0001" step="any" value={cotizacion} onChange={e => setCotizacion(e.target.value)} disabled={moneda === 'ARS'} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 disabled:opacity-50" /></div>
+          <div className="hidden space-y-1.5 sm:block"><label className="text-[11px] font-bold text-slate-500 uppercase">Cotización a ARS</label><input type="number" min="0.0001" step="any" value={cotizacion} onChange={e => setCotizacion(e.target.value)} disabled={moneda === 'ARS'} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 disabled:opacity-50" /></div>
         </div>
 
         {/* Monto */}
