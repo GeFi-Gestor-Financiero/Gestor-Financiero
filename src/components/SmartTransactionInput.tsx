@@ -46,6 +46,22 @@ function writtenAmount(text: string) {
   return best;
 }
 
+const spellingVocabulary = ['unos','unas','chocolate','chocolates','comida','bebida','coca','cola','cocacola','supermercado','restaurante','helado','sandwich','sanguche','milanesa','transporte','colectivo','sube','farmacia','medicamento','internet','alquiler','inversión','bitcoin','ethereum','efectivo','mercado','pago','rendimiento','préstamo','ingreso','gasto','compré','pagué','gasté','recibí','invertí','ahorré'];
+const editDistance = (left: string, right: string) => {
+  const rows = Array.from({length:left.length+1},(_,index)=>index);
+  for(let column=1;column<=right.length;column++){let previous=rows[0];rows[0]=column;for(let row=1;row<=left.length;row++){const saved=rows[row];rows[row]=Math.min(rows[row]+1,rows[row-1]+1,previous+(left[row-1]===right[column-1]?0:1));previous=saved;}}
+  return rows[left.length];
+};
+function correctSpelling(text: string) {
+  return text.replace(/[a-záéíóúñ]+/gi, raw => {
+    const clean=normalize(raw);let best=raw,bestDistance=99;
+    for(const candidate of spellingVocabulary){const distance=editDistance(clean,normalize(candidate));if(distance<bestDistance){best=candidate;bestDistance=distance;}}
+    const limit=clean.length>=8?2:clean.length>=4?1:0;
+    if(bestDistance>limit)return raw;
+    return /^[A-ZÁÉÍÓÚÑ]/.test(raw)?best.charAt(0).toUpperCase()+best.slice(1):best;
+  });
+}
+
 function inferDate(text: string) {
   const clean = normalize(text), date = new Date();
   if (/\bayer\b/.test(clean)) date.setDate(date.getDate() - 1);
@@ -78,11 +94,12 @@ function inferAmount(text: string) {
 }
 
 function inferDetail(text: string) {
-  const cleaned = text
+  const cleaned = correctSpelling(text)
     .replace(/\b(?:hoy|ayer)\b/gi, '')
     .replace(/\b\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?\b/g, '')
     .replace(/\b\d{1,2}\s+de\s+[a-záéíóú]+(?:\s+de\s+\d{4})?/gi, '')
     .replace(/(?:\$\s*)?\d[\d.,]*\s*(?:millones?|millón|mil)?/gi, '')
+    .replace(/\b(?:(?:cero|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|diecis[eé]is|diecisiete|dieciocho|diecinueve|veinte|veinti\w+|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien|ciento|\w+cientos|medio|media|mil|millones?|mill[oó]n|lucas?|palos?|y)\s*)+(?:pesos?|ars)?\b/gi, '')
     .replace(/\b(?:gast[eé]|pagu[eé]|compr[eé]|ingres[eéó]?|cobr[eé]|recib[ií]|deposit[eéó]?|invert[ií]|ahorr[eé]|prest[eé])\b/gi, '')
     .replace(/^\s*(?:pesos?|ars|usd|d[oó]lares?)?\s*(?:en|por|de|a)\s+/i, '')
     .replace(/\s+/g, ' ').trim().replace(/^[,.;:\-]+|[,.;:\-]+$/g, '').trim();
