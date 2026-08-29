@@ -14,6 +14,8 @@ export interface Transaction {
   createdAt: number;
   uid: string;
   deletedAt?: number;
+  accountDelta?: number;
+  balanceOrigin?: 'baseline' | 'new';
 }
 
 export interface Account { id: string; nombre: string; tipo: 'Banco' | 'Billetera' | 'Efectivo'; moneda: string; saldoInicial: number; activa: boolean; }
@@ -21,7 +23,7 @@ export interface FixedExpense { id: string; nombre: string; monto: number; moned
 export interface LoanPayment { fecha: string; monto: number; nota?: string; }
 export interface Loan { id: string; persona: string; monto: number; moneda: string; motivo: string; fecha: string; estado: 'Pendiente' | 'Pagado'; cuentaId?: string; fechaEstimada?: string; pagos: LoanPayment[]; }
 export interface QuickLink { id: string; nombre: string; url: string; }
-export interface UserSettings { darkMode: boolean; hideBalances: boolean; monedaBase: string; monedas: string[]; categorias: string[]; widgets: string[]; quickLinks: QuickLink[]; showSavings?: boolean; accountBalanceAdjustment?: number; }
+export interface UserSettings { darkMode: boolean; hideBalances: boolean; monedaBase: string; monedas: string[]; categorias: string[]; widgets: string[]; quickLinks: QuickLink[]; showSavings?: boolean; }
 
 export interface MonthSummary {
   plataInicial: number;
