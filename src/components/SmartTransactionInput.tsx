@@ -46,7 +46,7 @@ function writtenAmount(text: string) {
   return best;
 }
 
-const spellingVocabulary = ['unos','unas','chocolate','chocolates','comida','bebida','coca','cola','cocacola','supermercado','restaurante','helado','sandwich','sanguche','milanesa','transporte','colectivo','sube','farmacia','medicamento','internet','alquiler','inversión','bitcoin','ethereum','efectivo','mercado','pago','rendimiento','préstamo','ingreso','gasto','compré','pagué','gasté','recibí','invertí','ahorré'];
+const spellingVocabulary = ['unos','unas','caramelo','caramelos','chocolate','chocolates','comida','bebida','coca','cola','cocacola','supermercado','restaurante','helado','sandwich','sanguche','milanesa','transporte','colectivo','sube','farmacia','medicamento','internet','alquiler','inversión','bitcoin','ethereum','efectivo','mercado','pago','rendimiento','préstamo','ingreso','gasto','compré','pagué','gasté','recibí','invertí','ahorré'];
 const editDistance = (left: string, right: string) => {
   const rows = Array.from({length:left.length+1},(_,index)=>index);
   for(let column=1;column<=right.length;column++){let previous=rows[0];rows[0]=column;for(let row=1;row<=left.length;row++){const saved=rows[row];rows[row]=Math.min(rows[row]+1,rows[row-1]+1,previous+(left[row-1]===right[column-1]?0:1));previous=saved;}}
@@ -101,7 +101,8 @@ function inferDetail(text: string) {
     .replace(/(?:\$\s*)?\d[\d.,]*\s*(?:millones?|millón|mil)?/gi, '')
     .replace(/\b(?:(?:cero|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|diecis[eé]is|diecisiete|dieciocho|diecinueve|veinte|veinti\w+|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien|ciento|\w+cientos|medio|media|mil|millones?|mill[oó]n|lucas?|palos?|y)\s*)+(?:pesos?|ars)?\b/gi, '')
     .replace(/\b(?:gast[eé]|pagu[eé]|compr[eé]|ingres[eéó]?|cobr[eé]|recib[ií]|deposit[eéó]?|invert[ií]|ahorr[eé]|prest[eé])\b/gi, '')
-    .replace(/^\s*(?:pesos?|ars|usd|d[oó]lares?)?\s*(?:en|por|de|a)\s+/i, '')
+    .replace(/^\s*(?:pesos?|ars|usd|d[oó]lares?)?\s*(?:en|por|para|con|de|a)\s+/i, '')
+    .replace(/^\s*(?:el|la|los|las|un|uno|una|unos|unas)\s+/i, '')
     .replace(/\s+/g, ' ').trim().replace(/^[,.;:\-]+|[,.;:\-]+$/g, '').trim();
   return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 }
