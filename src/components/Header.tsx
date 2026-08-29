@@ -58,26 +58,26 @@ export default function Header({
   id="app-header"
   className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-xs transition-colors duration-200"
 >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           
           {/* Logo & Info */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm">
               <TrendingUp className="w-4 h-4" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h1 className="text-base font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
                 Mi Gestor Financiero
               </h1>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-sans">
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-sans truncate">
                 Control personal de ingresos, gastos y efectivo
               </p>
             </div>
           </div>
 
           {/* Month / Year Selector */}
-          <div className="flex items-center justify-center gap-1.5 bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 transition-colors duration-200">
+          <div className="flex w-full md:w-auto items-center justify-between md:justify-center gap-1.5 bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 transition-colors duration-200">
             <button
               onClick={handlePrevMonth}
               className="p-1.5 hover:bg-white dark:hover:bg-slate-900 rounded-lg transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white shadow-3xs dark:shadow-none"
@@ -86,12 +86,12 @@ export default function Header({
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
 
-            <div className="flex items-center gap-1.5 px-2">
+            <div className="flex flex-1 md:flex-none items-center justify-center gap-1.5 px-1 sm:px-2 min-w-0">
               <Calendar className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
               <select
                 value={selectedMonth}
                 onChange={(e) => onMonthChange(parseInt(e.target.value))}
-                className="bg-transparent font-bold text-slate-700 dark:text-slate-300 text-xs focus:outline-none cursor-pointer border-none"
+                className="min-w-0 bg-transparent font-bold text-slate-700 dark:text-slate-300 text-xs focus:outline-none cursor-pointer border-none"
               >
                 {MESES.map((mes, idx) => (
                   <option key={idx} value={idx} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">{mes}</option>
@@ -121,8 +121,8 @@ export default function Header({
 
           {/* User profile / Logout */}
           {user && (
-            <div className="flex items-center justify-between md:justify-end gap-3 border-t md:border-t-0 pt-2.5 md:pt-0 border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between md:justify-end gap-2 sm:gap-3 border-t md:border-t-0 pt-2.5 md:pt-0 border-slate-100 dark:border-slate-800 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
                 {user.photoURL ? (
                   <img
                     src={user.photoURL}
@@ -135,17 +135,17 @@ export default function Header({
                     <User className="w-3.5 h-3.5" />
                   </div>
                 )}
-                <div className="text-left">
+                <div className="text-left min-w-0">
                   <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200 leading-tight">
                     {user.displayName || 'Usuario'}
                   </p>
-                  <p className="text-[9px] text-slate-400 dark:text-slate-500 leading-none">
+                  <p className="max-w-36 sm:max-w-none truncate text-[9px] text-slate-400 dark:text-slate-500 leading-none">
                     {user.isAnonymous ? 'Modo Invitado' : user.email}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1">
+              <div className="flex shrink-0 items-center gap-1">
                 {/* Mostrar/Ocultar montos */}
                 <button
                   onClick={onToggleHideBalances}

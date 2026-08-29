@@ -73,7 +73,7 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
   };
 
   return (
-    <div id="add-transaction-form-card" className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm transition-colors duration-200">
+    <div id="add-transaction-form-card" className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm transition-colors duration-200">
       <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2">
         <Plus className="w-4 h-4 text-blue-500" />
         Nuevo Movimiento
@@ -82,7 +82,7 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && <p role="alert" className="rounded-lg bg-rose-50 dark:bg-rose-950/30 px-3 py-2 text-xs text-rose-700 dark:text-rose-300">{error}</p>}
         {/* Row for Fecha & Categoría */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Fecha */}
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
@@ -119,7 +119,7 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">Moneda</label><select value={moneda} onChange={e => setMoneda(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">{currencies.map(c => <option key={c}>{c}</option>)}</select></div>
           <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">Cotización a ARS</label><input type="number" min="0.0001" step="any" value={cotizacion} onChange={e => setCotizacion(e.target.value)} disabled={moneda === 'ARS'} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 disabled:opacity-50" /></div>
         </div>
@@ -144,7 +144,7 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">Categoría</label><select value={categoriaDetalle} onChange={e => setCategoriaDetalle(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">{categories.map(c => <option key={c}>{c}</option>)}</select></div>
           <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">Cuenta origen</label><select value={cuentaOrigen} onChange={e => setCuentaOrigen(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"><option value="">Sin cuenta</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></div>
         </div>
