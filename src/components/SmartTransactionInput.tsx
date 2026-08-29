@@ -17,6 +17,35 @@ function parseNumber(raw: string, scale = 1) {
   return Number(value) * scale;
 }
 
+const writtenUnits: Record<string, number> = {
+  cero:0, un:1, uno:1, una:1, dos:2, tres:3, cuatro:4, cinco:5, seis:6, siete:7, ocho:8, nueve:9,
+  diez:10, once:11, doce:12, trece:13, catorce:14, quince:15, dieciseis:16, diecisiete:17, dieciocho:18, diecinueve:19,
+  veinte:20, veintiuno:21, veintiun:21, veintidos:22, veintitres:23, veinticuatro:24, veinticinco:25, veintiseis:26, veintisiete:27, veintiocho:28, veintinueve:29,
+  treinta:30, cuarenta:40, cincuenta:50, sesenta:60, setenta:70, ochenta:80, noventa:90,
+  cien:100, ciento:100, doscientos:200, trescientos:300, cuatrocientos:400, quinientos:500, seiscientos:600, setecientos:700, ochocientos:800, novecientos:900,
+};
+
+function writtenAmount(text: string) {
+  const tokens = normalize(text).replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+  let best = 0;
+  for (let start = 0; start < tokens.length; start++) {
+    let total = 0, group = 0, recognized = 0;
+    for (let index = start; index < Math.min(tokens.length, start + 10); index++) {
+      const word = tokens[index];
+      if (word === 'y') continue;
+      if (word === 'medio' || word === 'media') { group += 0.5; recognized++; continue; }
+      if (word in writtenUnits) { group += writtenUnits[word]; recognized++; continue; }
+      if (word === 'mil') { total += (group || 1) * 1000; group = 0; recognized++; continue; }
+      if (word === 'millon' || word === 'millones' || word === 'palo' || word === 'palos') { total += (group || 1) * 1_000_000; group = 0; recognized++; best = Math.max(best, total); break; }
+      if (word === 'luca' || word === 'lucas') { total += (group || 1) * 1000; group = 0; recognized++; best = Math.max(best, total); break; }
+      if (word === 'peso' || word === 'pesos' || word === 'ars') { if (recognized) best = Math.max(best, total + group); break; }
+      break;
+    }
+    if (recognized) best = Math.max(best, total + group);
+  }
+  return best;
+}
+
 function inferDate(text: string) {
   const clean = normalize(text), date = new Date();
   if (/\bayer\b/.test(clean)) date.setDate(date.getDate() - 1);
@@ -43,7 +72,7 @@ function inferType(text: string): TransactionType {
 function inferAmount(text: string) {
   const withoutDates = normalize(text).replace(/\b\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?\b/g, '').replace(/\b\d{1,2}\s+de\s+[a-z]+(?:\s+de\s+\d{4})?/g, '');
   const match = withoutDates.match(/(?:\$\s*)?(\d[\d.,]*)(?:\s*)(millones?|millon|mil)\b/) || withoutDates.match(/(?:\$\s*)?(\d[\d.,]*)/);
-  if (!match) return 0;
+  if (!match) return writtenAmount(withoutDates);
   const suffix = match[2] || '';
   return parseNumber(match[1], suffix.startsWith('millon') ? 1_000_000 : suffix === 'mil' ? 1_000 : 1);
 }
