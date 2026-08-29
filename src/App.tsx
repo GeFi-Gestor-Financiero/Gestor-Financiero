@@ -73,12 +73,13 @@ export default function App() {
   let income=0,expense=0,investment=0,cumulativeIncome=0,cumulativeExpense=0,cumulativeInvestment=0,cashMovements=0;
   currentTxs.forEach(t=>{const value=toArs(t),date=new Date(`${t.fecha}T12:00:00`),isCurrent=date.getFullYear()===year&&date.getMonth()===month,isBefore=date.getFullYear()<year||(date.getFullYear()===year&&date.getMonth()<month);if(!isCurrent&&!isBefore)return;
    if(t.categoria==='Ingreso'||t.categoria==='Ef+')cumulativeIncome+=value;
-   if(t.categoria==='Gasto'||t.categoria==='Ef-'||t.categoria==='Gasto efectivo')cumulativeExpense+=value;
+   const isBalanceCorrection=t.categoriaDetalle==='Corrección de saldo';
+   if(!isBalanceCorrection&&(t.categoria==='Gasto'||t.categoria==='Ef-'||t.categoria==='Gasto efectivo'))cumulativeExpense+=value;
    if(t.categoria==='Inversion')cumulativeInvestment+=value;if(t.categoria==='Desinversion')cumulativeInvestment-=value;
    if(t.categoria==='Ef+'||t.categoria==='Ef-')cashMovements+=t.categoria==='Ef+'?value:-value;
-   if(isCurrent){if(t.categoria==='Ingreso'||t.categoria==='Ef+')income+=value;if(t.categoria==='Gasto'||t.categoria==='Ef-'||t.categoria==='Gasto efectivo')expense+=value;if(t.categoria==='Inversion')investment+=value;if(t.categoria==='Desinversion')investment-=value;}
+   if(isCurrent){if(!isBalanceCorrection&&(t.categoria==='Ingreso'||t.categoria==='Ef+'))income+=value;if(!isBalanceCorrection&&(t.categoria==='Gasto'||t.categoria==='Ef-'||t.categoria==='Gasto efectivo'))expense+=value;if(t.categoria==='Inversion')investment+=value;if(t.categoria==='Desinversion')investment-=value;}
   });
-  const spent=active.filter(t=>t.categoria==='Gasto'||t.categoria==='Gasto efectivo').map(toArs),cash=accounts.filter(a=>a.tipo==='Efectivo').reduce((n,a)=>n+Number(a.saldoInicial||0),0)+cashMovements;
+  const spent=active.filter(t=>t.categoriaDetalle!=='Corrección de saldo'&&(t.categoria==='Gasto'||t.categoria==='Gasto efectivo')).map(toArs),cash=accounts.filter(a=>a.tipo==='Efectivo').reduce((n,a)=>n+Number(a.saldoInicial||0),0)+cashMovements;
   const accountBalance=18537.08+txs.reduce((total,item)=>total+Number(item.accountDelta||0),0), patrimonio=accountBalance+cash+investment;
   return {income,expense,investment,patrimonio,cash,max:Math.max(0,...spent),accounts:accountBalance};
  },[currentTxs,active,accounts,month,year,txs]);
