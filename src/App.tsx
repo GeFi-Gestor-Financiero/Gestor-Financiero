@@ -7,7 +7,7 @@ import { Account, Loan, FixedExpense, Transaction, UserSettings } from './types'
 import Login from './components/Login'; import Header, { MESES } from './components/Header'; import TransactionForm from './components/TransactionForm'; import TransactionList from './components/TransactionList';
 import SmartTransactionInput from './components/SmartTransactionInput';
 
-const defaults: UserSettings = { darkMode: false, hideBalances: false, monedaBase: 'ARS', monedas: ['ARS','USD','EUR','BRL'], categorias: ['General','Alimentos','Transporte','Salud','Educación','Hogar','Ocio','Trabajo'], widgets: ['patrimonio','cuentas','efectivo','inversiones'], quickLinks: [], showSavings: true, accountBalanceOverride: 18537.08 };
+const defaults: UserSettings = { darkMode: false, hideBalances: false, monedaBase: 'ARS', monedas: ['ARS','USD','EUR','BRL'], categorias: ['General','Alimentos','Transporte','Salud','Educación','Hogar','Ocio','Trabajo'], widgets: ['patrimonio','cuentas','efectivo','inversiones'], quickLinks: [], showSavings: true, accountBalanceAdjustment: 576644.74 };
 const today = () => new Date().toISOString().slice(0,10);
 const toArs = (t: Transaction) => t.monto * (t.moneda === 'ARS' || !t.moneda ? 1 : Number(t.cotizacion || 1));
 const readCache = <T,>(key: string, fallback: T): T => { try { const raw = localStorage.getItem(`gefi:${key}`); return raw ? JSON.parse(raw) as T : fallback; } catch { return fallback; } };
@@ -78,9 +78,9 @@ export default function App() {
    if(isCurrent){if(t.categoria==='Ingreso'||t.categoria==='Ef+')income+=value;if(t.categoria==='Gasto'||t.categoria==='Ef-'||t.categoria==='Gasto efectivo')expense+=value;if(t.categoria==='Inversion')investment+=value;if(t.categoria==='Desinversion')investment-=value;}
   });
   const spent=active.filter(t=>t.categoria==='Gasto'||t.categoria==='Gasto efectivo').map(toArs),cash=accounts.filter(a=>a.tipo==='Efectivo').reduce((n,a)=>n+Number(a.saldoInicial||0),0)+cashMovements;
-  const available=cumulativeIncome-cumulativeExpense-cumulativeInvestment, calculatedAccountBalance=available-cash, accountBalance=Number.isFinite(settings.accountBalanceOverride)?Number(settings.accountBalanceOverride):calculatedAccountBalance, patrimonio=accountBalance+cash+investment;
+  const available=cumulativeIncome-cumulativeExpense-cumulativeInvestment, calculatedAccountBalance=available-cash, accountBalance=calculatedAccountBalance+Number(settings.accountBalanceAdjustment||0), patrimonio=accountBalance+cash+investment;
   return {income,expense,investment,patrimonio,cash,max:Math.max(0,...spent),accounts:accountBalance};
- },[currentTxs,active,accounts,month,year,settings.accountBalanceOverride]);
+ },[currentTxs,active,accounts,month,year,settings.accountBalanceAdjustment]);
  const addTx=async(data:Omit<Transaction,'id'|'createdAt'|'uid'>)=>{if(!user||!data.fecha||data.monto<=0||!settings.monedas.includes(data.moneda||'ARS'))throw new Error('Completá fecha, importe y moneda.'); if(data.categoria==='Transferencia'&&(!data.cuentaOrigen||!data.cuentaDestino||data.cuentaOrigen===data.cuentaDestino))throw new Error('Elegí cuentas distintas para la transferencia.'); const id=crypto.randomUUID(), next:Transaction={...data,motivo:(data.motivo||'').trim(),id,createdAt:Date.now(),uid:user.uid}; setTxs(prev=>[next,...prev]); try { await setDoc(doc(db,'users',user.uid,'transactions',id),next);setSyncError(''); } catch { setSyncError('Sin conexión con la nube. El movimiento quedó pendiente en este dispositivo.');setTxs(prev=>prev.map(x=>x.id===id?{...x,id:`local-${id}`}:x)); }};
  const deleteTx=async(id:string)=>{const deletedAt=Date.now();setTxs(prev=>prev.map(x=>x.id===id?{...x,deletedAt}:x));if(!id.startsWith('local-'))await setDoc(doc(db,'users',user.uid,'transactions',id),{deletedAt},{merge:true}).catch(()=>undefined)};
  const restoreTx=async(id:string)=>{setTxs(prev=>prev.map(x=>{if(x.id!==id)return x;const restored={...x};delete restored.deletedAt;return restored}));if(!id.startsWith('local-'))await updateDoc(doc(db,'users',user.uid,'transactions',id),{deletedAt:null}).catch(()=>undefined)};
