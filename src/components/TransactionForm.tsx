@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import { Account, Transaction, TransactionType } from '../types';
 import { motion } from 'motion/react';
 
@@ -39,6 +39,7 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
   const [cuentaDestino, setCuentaDestino] = useState('');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [showMoreMobile, setShowMoreMobile] = useState(false);
 
   // Sync date input if user shifts selected month/year and current date is no longer in range
   React.useEffect(() => {
@@ -49,8 +50,8 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
     e.preventDefault();
     setError(null);
     const valMonto = parseFloat(monto);
-    if (!fecha || !categoria || isNaN(valMonto) || valMonto <= 0 || !motivo.trim()) {
-      setError('Completá fecha, importe y motivo con valores válidos.'); return;
+    if (!fecha || !categoria || isNaN(valMonto) || valMonto <= 0) {
+      setError('Completá la fecha y un importe mayor que cero.'); return;
     }
 
     setLoading(true);
@@ -82,7 +83,7 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && <p role="alert" className="rounded-lg bg-rose-50 dark:bg-rose-950/30 px-3 py-2 text-xs text-rose-700 dark:text-rose-300">{error}</p>}
         {/* Row for Fecha & Categoría */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className={`${showMoreMobile ? 'grid' : 'hidden'} grid-cols-1 sm:grid sm:grid-cols-2 gap-3`}>
           {/* Fecha */}
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
@@ -144,16 +145,16 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">Categoría</label><select value={categoriaDetalle} onChange={e => setCategoriaDetalle(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">{categories.map(c => <option key={c}>{c}</option>)}</select></div>
-          <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">Cuenta origen</label><select value={cuentaOrigen} onChange={e => setCuentaOrigen(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"><option value="">Sin cuenta</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></div>
+        <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">Cuenta origen</label><select value={cuentaOrigen} onChange={e => setCuentaOrigen(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"><option value="">Sin cuenta</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></div>
+        <div className={`${showMoreMobile ? 'block' : 'hidden'} space-y-1.5 sm:block`}>
+          <label className="text-[11px] font-bold text-slate-500 uppercase">Categoría de detalle</label><select value={categoriaDetalle} onChange={e => setCategoriaDetalle(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">{categories.map(c => <option key={c}>{c}</option>)}</select>
         </div>
-        {categoria === 'Transferencia' && <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">Cuenta destino</label><select value={cuentaDestino} onChange={e => setCuentaDestino(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"><option value="">Seleccionar</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></div>}
+        {categoria === 'Transferencia' && <div className={`${showMoreMobile ? 'block' : 'hidden'} space-y-1.5 sm:block`}><label className="text-[11px] font-bold text-slate-500 uppercase">Cuenta destino</label><select value={cuentaDestino} onChange={e => setCuentaDestino(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"><option value="">Seleccionar</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></div>}
 
         {/* Motivo */}
         <div className="space-y-1.5">
           <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-            Motivo / Detalle
+            Motivo / Detalle <span className="normal-case font-normal">(opcional)</span>
           </label>
           <input
             type="text"
@@ -162,9 +163,12 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
             onChange={(e) => setMotivo(e.target.value)}
             className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-sans transition-colors duration-150"
             maxLength={100}
-            required
           />
         </div>
+
+        <button type="button" onClick={() => setShowMoreMobile(value => !value)} className="mx-auto flex min-h-10 items-center gap-1.5 px-4 text-xs font-bold text-blue-600 dark:text-blue-400 sm:hidden">
+          {showMoreMobile ? <><ChevronUp className="h-4 w-4" />Ver menos</> : <><ChevronDown className="h-4 w-4" />Ver más</>}
+        </button>
 
         <button
           type="submit"
