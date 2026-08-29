@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { Account, Transaction, TransactionType } from '../types';
+import { interpretTransaction } from '../services/aiTransaction';
 
 type Draft = Omit<Transaction, 'id' | 'createdAt' | 'uid'>;
 type Props = { accounts: Account[]; categories: string[]; onAddTransaction: (data: Draft) => Promise<void> };
@@ -123,14 +124,21 @@ export default function SmartTransactionInput({ accounts, categories, onAddTrans
   const analyzeAndSave = async () => {
     if (saving) return;
     if (!text.trim()) { setError('Escribí el movimiento que querés registrar.'); return; }
-    const monto = inferAmount(text);
-    if (!Number.isFinite(monto) || monto <= 0) { setError('No pude reconocer el monto. Probá, por ejemplo: “hoy gasté 10 mil en Open25”.'); return; }
-    const categoria = inferType(text), cash = categoria === 'Ef+' || categoria === 'Ef-';
-    const mentionedAccount = accounts.find(account => normalize(text).includes(normalize(account.nombre)));
-    const defaultAccount = cash ? accounts.find(account => account.tipo === 'Efectivo') : accounts.find(account => account.tipo !== 'Efectivo');
-    const movement: Draft = { fecha: inferDate(text), categoria, monto, motivo: inferDetail(text), moneda: 'ARS', cotizacion: 1, categoriaDetalle: inferCategory(text, categories), cuentaOrigen: mentionedAccount?.id || defaultAccount?.id || '' };
     setSaving(true); setError('');
-    try { await onAddTransaction(movement); setText(''); }
+    try {
+      let movement:Draft;
+      try {
+        const parsed=await interpretTransaction(text,categories,localDate());
+        const mentionedAccount=accounts.find(account=>normalize(text).includes(normalize(account.nombre)));
+        const defaultAccount=parsed.efectivo?accounts.find(account=>account.tipo==='Efectivo'):accounts.find(account=>account.tipo!=='Efectivo');
+        movement={fecha:parsed.fecha,categoria:parsed.categoria,monto:parsed.monto,motivo:parsed.motivo,moneda:'ARS',cotizacion:1,categoriaDetalle:parsed.categoriaDetalle,cuentaOrigen:mentionedAccount?.id||defaultAccount?.id||''};
+      } catch {
+        const monto=inferAmount(text);if(!Number.isFinite(monto)||monto<=0)throw new Error('No pude reconocer el monto. Probá, por ejemplo: “hoy gasté 10 mil en Open25”.');
+        const categoria=inferType(text),cash=categoria==='Ef+'||categoria==='Ef-',mentionedAccount=accounts.find(account=>normalize(text).includes(normalize(account.nombre))),defaultAccount=cash?accounts.find(account=>account.tipo==='Efectivo'):accounts.find(account=>account.tipo!=='Efectivo');
+        movement={fecha:inferDate(text),categoria,monto,motivo:inferDetail(text),moneda:'ARS',cotizacion:1,categoriaDetalle:inferCategory(text,categories),cuentaOrigen:mentionedAccount?.id||defaultAccount?.id||''};
+      }
+      await onAddTransaction(movement); setText('');
+    }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'No se pudo guardar el movimiento.'); }
     finally { setSaving(false); }
   };
