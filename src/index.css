@@ -43,15 +43,26 @@ body {
   color: #f1f5f9;
 }
 
-/* Marcos inspirados en el degradado azul oscuro del saludo principal. */
-:is(section, .summary-frame, div[class*="rounded-2xl"])[class*="border"] {
-  border-color: rgb(30 64 175 / 0.38) !important;
-  box-shadow: 0 8px 24px rgb(15 23 42 / 0.07), 0 0 0 1px rgb(30 58 138 / 0.08);
+/* Marco exterior inspirado en el degradado del saludo principal. */
+.app-edge-frame::before,
+.app-edge-frame::after {
+  content: "";
+  position: fixed;
+  z-index: 55;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  pointer-events: none;
+  background: linear-gradient(180deg, #020617 0%, #172554 35%, #1d4ed8 70%, #020617 100%);
+  box-shadow: 0 0 18px rgb(37 99 235 / 0.28);
 }
 
-.dark :is(section, .summary-frame, div[class*="rounded-2xl"])[class*="border"] {
-  border-color: rgb(59 130 246 / 0.38) !important;
-  box-shadow: 0 10px 30px rgb(2 6 23 / 0.3), 0 0 0 1px rgb(30 64 175 / 0.18);
+.app-edge-frame::before { left: 0; }
+.app-edge-frame::after { right: 0; }
+
+@media (min-width: 640px) {
+  .app-edge-frame::before,
+  .app-edge-frame::after { width: 6px; }
 }
 
 /* Animación de la cinta de precios de mercado (scroll infinito de derecha a izquierda) */
