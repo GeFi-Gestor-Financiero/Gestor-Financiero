@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, ChevronDown, ChevronUp, Pencil, Search, Trash2, X } from 'lucide-react';
 import { Account, Transaction } from '../types';
+import { useToast } from '../hooks/useToast';
 
 type Props = { transactions: Transaction[]; onDeleteTransaction: (id: string) => Promise<void>; onEditTransaction: (transaction: Transaction) => Promise<void>; loading: boolean; hideBalances?: boolean; accounts?: Account[] };
 
 export default function TransactionList({ transactions, onDeleteTransaction, onEditTransaction, loading, hideBalances = false, accounts = [] }: Props) {
+  const toast = useToast();
   const [search, setSearch] = useState(''), [type, setType] = useState(''), [currency, setCurrency] = useState(''), [account, setAccount] = useState(''), [expanded, setExpanded] = useState(false);
   const [editDraft, setEditDraft] = useState<Transaction | null>(null), [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null), [saving, setSaving] = useState(false), [modalError, setModalError] = useState(''), [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 639px)').matches);
   useEffect(() => { const media = window.matchMedia('(max-width: 639px)'); const syncViewport = () => setIsMobile(media.matches); syncViewport(); media.addEventListener('change', syncViewport); return () => media.removeEventListener('change', syncViewport); }, []);
@@ -18,7 +20,7 @@ export default function TransactionList({ transactions, onDeleteTransaction, onE
   const initialLimit = isMobile ? 4 : 10;
   const visibleList = expanded ? list : list.slice(0, initialLimit);
   const saveEdit = async () => { if (!editDraft) return; if (!editDraft.fecha || Number(editDraft.monto) <= 0) { setModalError('Completá la fecha y un importe mayor que cero.'); return; } setSaving(true); setModalError(''); try { await onEditTransaction({ ...editDraft, motivo: (editDraft.motivo || '').trim(), monto: Number(editDraft.monto) }); setEditDraft(null); } catch { setModalError('No se pudo guardar el cambio. Intentá nuevamente.'); } finally { setSaving(false); } };
-  const confirmDelete = async () => { if (!deleteTarget) return; setSaving(true); try { await onDeleteTransaction(deleteTarget.id); setDeleteTarget(null); } catch { setModalError('No se pudo eliminar el movimiento. Intentá nuevamente.'); } finally { setSaving(false); } };
+  const confirmDelete = async () => { if (!deleteTarget) return; const target=deleteTarget;setDeleteTarget(null);setSaving(true); try { await onDeleteTransaction(target.id);toast.success('Movimiento eliminado'); } catch { toast.error('No se pudo eliminar el movimiento. Intentá nuevamente.'); } finally { setSaving(false); } };
   const actions = (t: Transaction) => <div className="flex shrink-0 gap-1"><button aria-label={`Editar ${t.motivo}`} title="Editar" onClick={() => { setModalError(''); setEditDraft({ ...t }); }} className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-500 hover:text-blue-600 dark:border-slate-700"><Pencil className="h-4 w-4" /></button><button aria-label={`Eliminar ${t.motivo}`} title="Eliminar" onClick={() => { setModalError(''); setDeleteTarget(t); }} className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-500 hover:text-rose-600 dark:border-slate-700"><Trash2 className="h-4 w-4" /></button></div>;
 
   return <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
