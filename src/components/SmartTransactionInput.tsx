@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, X } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { Account, Transaction, TransactionType } from '../types';
 
 type Draft = Omit<Transaction, 'id' | 'createdAt' | 'uid'>;
@@ -73,35 +73,24 @@ function inferCategory(text: string, categories: string[]) {
 }
 
 export default function SmartTransactionInput({ accounts, categories, onAddTransaction }: Props) {
-  const [text, setText] = useState(''), [draft, setDraft] = useState<Draft | null>(null), [error, setError] = useState(''), [saving, setSaving] = useState(false);
-  const analyze = () => {
+  const [text, setText] = useState(''), [error, setError] = useState(''), [saving, setSaving] = useState(false);
+  const analyzeAndSave = async () => {
+    if (saving) return;
     if (!text.trim()) { setError('Escribí el movimiento que querés registrar.'); return; }
     const monto = inferAmount(text);
     if (!Number.isFinite(monto) || monto <= 0) { setError('No pude reconocer el monto. Probá, por ejemplo: “hoy gasté 10 mil en Open25”.'); return; }
     const categoria = inferType(text), cash = categoria === 'Ef+' || categoria === 'Ef-';
     const mentionedAccount = accounts.find(account => normalize(text).includes(normalize(account.nombre)));
     const defaultAccount = cash ? accounts.find(account => account.tipo === 'Efectivo') : accounts.find(account => account.tipo !== 'Efectivo');
-    setDraft({ fecha: inferDate(text), categoria, monto, motivo: inferDetail(text), moneda: 'ARS', cotizacion: 1, categoriaDetalle: inferCategory(text, categories), cuentaOrigen: mentionedAccount?.id || defaultAccount?.id || '' });
-    setError('');
-  };
-  const save = async () => {
-    if (!draft || draft.monto <= 0 || !draft.fecha) return;
+    const movement: Draft = { fecha: inferDate(text), categoria, monto, motivo: inferDetail(text), moneda: 'ARS', cotizacion: 1, categoriaDetalle: inferCategory(text, categories), cuentaOrigen: mentionedAccount?.id || defaultAccount?.id || '' };
     setSaving(true); setError('');
-    try { await onAddTransaction(draft); setText(''); setDraft(null); }
+    try { await onAddTransaction(movement); setText(''); }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'No se pudo guardar el movimiento.'); }
     finally { setSaving(false); }
   };
   return <section className="rounded-2xl border border-blue-200 bg-white p-4 shadow-sm dark:border-blue-900/70 dark:bg-slate-900 sm:p-5">
     <div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-blue-600"/><div><h3 className="text-sm font-bold">Registro inteligente</h3><p className="text-[11px] text-slate-400">Describí el movimiento con tus palabras.</p></div></div>
-    <div className="mt-3 flex flex-col gap-2 sm:flex-row"><input value={text} onChange={event=>{setText(event.target.value);setError('')}} onKeyDown={event=>event.key==='Enter'&&analyze()} placeholder="Ej: hoy gasté 10 mil en Open25" className="min-h-11 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950"/><button type="button" onClick={analyze} className="min-h-11 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white">Interpretar</button></div>
+    <div className="mt-3 flex flex-col gap-2 sm:flex-row"><input value={text} disabled={saving} onChange={event=>{setText(event.target.value);setError('')}} onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();void analyzeAndSave()}}} placeholder="Ej: hoy gasté 10 mil en Open25" className="min-h-11 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-blue-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950"/><button type="button" disabled={saving} onClick={()=>void analyzeAndSave()} className="min-h-11 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white disabled:opacity-60">{saving?'Registrando…':'Interpretar y registrar'}</button></div>
     {error&&<p className="mt-2 rounded-lg bg-rose-50 p-2.5 text-xs text-rose-600 dark:bg-rose-950/30">{error}</p>}
-    {draft&&<div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/60 p-3 dark:border-blue-900/60 dark:bg-blue-950/20"><div className="flex items-center justify-between"><strong className="text-xs">Revisá antes de guardar</strong><button aria-label="Cerrar" onClick={()=>setDraft(null)}><X className="h-4 w-4"/></button></div><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
-      <label className="text-[10px] text-slate-500">Fecha<input type="date" value={draft.fecha} onChange={e=>setDraft({...draft,fecha:e.target.value})} className="mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-950"/></label>
-      <label className="text-[10px] text-slate-500">Tipo<select value={draft.categoria} onChange={e=>setDraft({...draft,categoria:e.target.value as TransactionType})} className="mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-950">{['Ingreso','Gasto','Inversion','Desinversion','Ahorro','Prestamo','Ef+','Ef-'].map(item=><option key={item}>{item}</option>)}</select></label>
-      <label className="text-[10px] text-slate-500">Monto<input type="number" min="0.01" step="any" value={draft.monto} onChange={e=>setDraft({...draft,monto:Number(e.target.value)})} className="mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-950"/></label>
-      <label className="text-[10px] text-slate-500">Categoría<select value={draft.categoriaDetalle} onChange={e=>setDraft({...draft,categoriaDetalle:e.target.value})} className="mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-950">{categories.map(item=><option key={item}>{item}</option>)}</select></label>
-      <label className="col-span-2 text-[10px] text-slate-500 sm:col-span-1">Cuenta<select value={draft.cuentaOrigen||''} onChange={e=>setDraft({...draft,cuentaOrigen:e.target.value})} className="mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-950"><option value="">Sin cuenta</option>{accounts.map(item=><option key={item.id} value={item.id}>{item.nombre}</option>)}</select></label>
-      <label className="col-span-2 text-[10px] text-slate-500 sm:col-span-5">Detalle (opcional)<input value={draft.motivo} onChange={e=>setDraft({...draft,motivo:e.target.value})} className="mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-950"/></label>
-    </div><button type="button" disabled={saving} onClick={save} className="mt-3 min-h-10 w-full rounded-lg bg-emerald-600 text-xs font-bold text-white disabled:opacity-60">{saving?'Guardando…':'Confirmar y guardar'}</button></div>}
   </section>;
 }
