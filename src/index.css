@@ -43,28 +43,6 @@ body {
   color: #f1f5f9;
 }
 
-/* Marco exterior inspirado en el degradado del saludo principal. */
-.app-edge-frame::before,
-.app-edge-frame::after {
-  content: "";
-  position: fixed;
-  z-index: 55;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  pointer-events: none;
-  background: linear-gradient(180deg, #020617 0%, #172554 35%, #1d4ed8 70%, #020617 100%);
-  box-shadow: 0 0 18px rgb(37 99 235 / 0.28);
-}
-
-.app-edge-frame::before { left: 0; }
-.app-edge-frame::after { right: 0; }
-
-@media (min-width: 640px) {
-  .app-edge-frame::before,
-  .app-edge-frame::after { width: 6px; }
-}
-
 /* Animación de la cinta de precios de mercado (scroll infinito de derecha a izquierda) */
 @keyframes market-ticker-scroll {
   from {
