@@ -17,6 +17,7 @@ Interpretá el texto aunque tenga faltas ortográficas, abreviaturas o jerga arg
 Respondé SOLO JSON válido con: fecha (YYYY-MM-DD), categoria, monto, motivo, categoriaDetalle, efectivo.
 categoria debe ser una de: ${allowedTypes.join(', ')}.
 categoriaDetalle debe ser una de: ${categories.join(', ')}.
+Usa Alimentos para comida, bebidas, golosinas, caramelos, chocolates, budines, restaurantes y supermercados. Usa Transporte para SUBE, colectivos, trenes, taxis o combustible. Usa Hogar solamente para vivienda, servicios o artículos domésticos.
 motivo debe contener ÚNICAMENTE aquello por lo que fue el movimiento, bien escrito, sin verbos, fechas, montos, moneda, preposiciones ni artículos. Ejemplos: "gasté doce pesos en unos caramleos hoy" => "Caramelos"; "pagué dos lucas por unos budines" => "Budines".
 Si se menciona efectivo, usa Ef+ para entrada o Ef- para salida y efectivo=true. Para un gasto común usa Gasto. No inventes importes.
 Texto: ${JSON.stringify(text)}`;
