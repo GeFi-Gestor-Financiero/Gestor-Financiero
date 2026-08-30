@@ -53,6 +53,9 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
     if (!fecha || !categoria || isNaN(valMonto) || valMonto <= 0) {
       setError('Completá la fecha y un importe mayor que cero.'); return;
     }
+    if (categoria === 'Transferencia' && (!cuentaOrigen || !cuentaDestino || cuentaOrigen === cuentaDestino)) {
+      setError('Elegí una cuenta de origen y otra de destino. Este movimiento no se contará como gasto.'); return;
+    }
 
     setLoading(true);
     try {
@@ -114,7 +117,7 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
               <option value="Ahorro" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Ahorro</option>
               <option value="Ef+" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Ef+ (Efectivo)</option>
               <option value="Ef-" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Ef- (Efectivo)</option>
-              <option value="Transferencia">Transferencia</option>
+              <option value="Transferencia">Transferencia entre cuenta y efectivo</option>
               <option value="Prestamo">Préstamo</option>
             </select>
           </div>
@@ -145,11 +148,11 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
           </div>
         </div>
 
-        <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">Cuenta origen</label><select value={cuentaOrigen} onChange={e => setCuentaOrigen(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"><option value="">Sin cuenta</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></div>
+        <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">{categoria === 'Transferencia' ? 'Sale de' : 'Cuenta origen'}</label><select value={cuentaOrigen} onChange={e => setCuentaOrigen(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"><option value="">{categoria === 'Transferencia' ? 'Seleccionar' : 'Sin cuenta'}</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.nombre}{a.tipo === 'Efectivo' ? ' · Efectivo' : ''}</option>)}</select></div>
         <div className={`${showMoreMobile ? 'block' : 'hidden'} space-y-1.5 sm:block`}>
           <label className="text-[11px] font-bold text-slate-500 uppercase">Categoría de detalle</label><select value={categoriaDetalle} onChange={e => setCategoriaDetalle(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">{categories.map(c => <option key={c}>{c}</option>)}</select>
         </div>
-        {categoria === 'Transferencia' && <div className={`${showMoreMobile ? 'block' : 'hidden'} space-y-1.5 sm:block`}><label className="text-[11px] font-bold text-slate-500 uppercase">Cuenta destino</label><select value={cuentaDestino} onChange={e => setCuentaDestino(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"><option value="">Seleccionar</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></div>}
+        {categoria === 'Transferencia' && <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">Entra a</label><select value={cuentaDestino} onChange={e => setCuentaDestino(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"><option value="">Seleccionar</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.nombre}{a.tipo === 'Efectivo' ? ' · Efectivo' : ''}</option>)}</select><p className="text-[10px] text-slate-400">No modifica gastos, ingresos ni patrimonio.</p></div>}
 
         {/* Motivo */}
         <div className="space-y-1.5">
