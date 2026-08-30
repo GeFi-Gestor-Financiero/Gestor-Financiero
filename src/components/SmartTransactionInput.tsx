@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { Mic, Sparkles } from 'lucide-react';
 import { Account, Transaction, TransactionType } from '../types';
 import { interpretTransaction } from '../services/aiTransaction';
 
@@ -120,31 +120,32 @@ function inferCategory(text: string, categories: string[]) {
 }
 
 export default function SmartTransactionInput({ accounts, categories, onAddTransaction }: Props) {
-  const [text, setText] = useState(''), [error, setError] = useState(''), [saving, setSaving] = useState(false);
-  const analyzeAndSave = async () => {
+  const [text, setText] = useState(''), [error, setError] = useState(''), [saving, setSaving] = useState(false),[listening,setListening]=useState(false);
+  const analyzeAndSave = async (spokenText=text) => {
     if (saving) return;
-    if (!text.trim()) { setError('Escribí el movimiento que querés registrar.'); return; }
+    if (!spokenText.trim()) { setError('Escribí o dictá el movimiento que querés registrar.'); return; }
     setSaving(true); setError('');
     try {
       let movement:Draft;
       try {
-        const parsed=await interpretTransaction(text,categories,localDate());
-        const mentionedAccount=accounts.find(account=>normalize(text).includes(normalize(account.nombre)));
+        const parsed=await interpretTransaction(spokenText,categories,localDate());
+        const mentionedAccount=accounts.find(account=>normalize(spokenText).includes(normalize(account.nombre)));
         const defaultAccount=parsed.efectivo?accounts.find(account=>account.tipo==='Efectivo'):accounts.find(account=>account.tipo!=='Efectivo');
         movement={fecha:parsed.fecha,categoria:parsed.categoria,monto:parsed.monto,motivo:parsed.motivo,moneda:'ARS',cotizacion:1,categoriaDetalle:parsed.categoriaDetalle,cuentaOrigen:mentionedAccount?.id||defaultAccount?.id||''};
       } catch {
-        const monto=inferAmount(text);if(!Number.isFinite(monto)||monto<=0)throw new Error('No pude reconocer el monto. Probá, por ejemplo: “hoy gasté 10 mil en Open25”.');
-        const categoria=inferType(text),cash=categoria==='Ef+'||categoria==='Ef-',mentionedAccount=accounts.find(account=>normalize(text).includes(normalize(account.nombre))),defaultAccount=cash?accounts.find(account=>account.tipo==='Efectivo'):accounts.find(account=>account.tipo!=='Efectivo');
-        movement={fecha:inferDate(text),categoria,monto,motivo:inferDetail(text),moneda:'ARS',cotizacion:1,categoriaDetalle:inferCategory(text,categories),cuentaOrigen:mentionedAccount?.id||defaultAccount?.id||''};
+        const monto=inferAmount(spokenText);if(!Number.isFinite(monto)||monto<=0)throw new Error('No pude reconocer el monto. Probá, por ejemplo: “hoy gasté 10 mil en Open25”.');
+        const categoria=inferType(spokenText),cash=categoria==='Ef+'||categoria==='Ef-',mentionedAccount=accounts.find(account=>normalize(spokenText).includes(normalize(account.nombre))),defaultAccount=cash?accounts.find(account=>account.tipo==='Efectivo'):accounts.find(account=>account.tipo!=='Efectivo');
+        movement={fecha:inferDate(spokenText),categoria,monto,motivo:inferDetail(spokenText),moneda:'ARS',cotizacion:1,categoriaDetalle:inferCategory(spokenText,categories),cuentaOrigen:mentionedAccount?.id||defaultAccount?.id||''};
       }
       await onAddTransaction(movement); setText('');
     }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'No se pudo guardar el movimiento.'); }
     finally { setSaving(false); }
   };
+  const startVoice=()=>{if(saving||listening)return;const Recognition=(window as any).SpeechRecognition||(window as any).webkitSpeechRecognition;if(!Recognition){setError('El dictado por voz no está disponible en este navegador. Probá con Chrome.');return}const recognition=new Recognition();recognition.lang='es-AR';recognition.interimResults=false;recognition.maxAlternatives=1;recognition.onstart=()=>{setListening(true);setError('')};recognition.onresult=(event:any)=>{const transcript=String(event.results?.[0]?.[0]?.transcript||'').trim();setText(transcript);setListening(false);if(transcript)void analyzeAndSave(transcript);else setError('No pude escuchar el movimiento. Intentá nuevamente.')};recognition.onerror=()=>{setListening(false);setError('No pude usar el micrófono. Revisá el permiso e intentá nuevamente.')};recognition.onend=()=>setListening(false);recognition.start()};
   return <section className="rounded-2xl border border-blue-200 bg-white p-4 shadow-sm dark:border-blue-900/70 dark:bg-slate-900 sm:p-5">
     <div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-blue-600"/><div><h3 className="text-sm font-bold">Registro inteligente</h3><p className="text-[11px] text-slate-400">Describí el movimiento con tus palabras.</p></div></div>
-    <div className="mt-3 flex flex-col gap-2 sm:flex-row"><input value={text} disabled={saving} onChange={event=>{setText(event.target.value);setError('')}} onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();void analyzeAndSave()}}} placeholder="Ej: hoy gasté 10 mil en Open25" className="min-h-11 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-blue-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950"/><button type="button" disabled={saving} onClick={()=>void analyzeAndSave()} className="min-h-11 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white disabled:opacity-60">{saving?'Registrando…':'Interpretar y registrar'}</button></div>
+    <div className="mt-3 flex flex-col gap-2 sm:flex-row"><input value={text} disabled={saving||listening} onChange={event=>{setText(event.target.value);setError('')}} onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();void analyzeAndSave()}}} placeholder={listening?'Escuchando…':'Ej: hoy gasté 10 mil en Open25'} className="min-h-11 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-blue-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950"/><button type="button" disabled={saving||listening} onClick={()=>void analyzeAndSave()} className="min-h-11 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white disabled:opacity-60">{saving?'Registrando…':'Interpretar y registrar'}</button><button type="button" disabled={saving} onClick={startVoice} aria-label="Registrar movimiento por voz" className={`flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-xs font-bold text-white transition-all disabled:opacity-60 ${listening?'animate-pulse bg-rose-600 shadow-lg shadow-rose-500/30':'bg-gradient-to-r from-violet-600 to-blue-600 hover:shadow-lg hover:shadow-blue-500/20'}`}><Mic className="h-4 w-4"/>{listening?'Escuchando…':'Hablar'}</button></div>
     {error&&<p className="mt-2 rounded-lg bg-rose-50 p-2.5 text-xs text-rose-600 dark:bg-rose-950/30">{error}</p>}
   </section>;
 }
