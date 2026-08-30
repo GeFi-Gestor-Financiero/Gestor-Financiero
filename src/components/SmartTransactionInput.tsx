@@ -101,7 +101,7 @@ function inferDetail(text: string) {
     .replace(/\b\d{1,2}\s+de\s+[a-záéíóú]+(?:\s+de\s+\d{4})?/gi, '')
     .replace(/(?:\$\s*)?\d[\d.,]*\s*(?:millones?|millón|mil)?/gi, '')
     .replace(/\b(?:(?:cero|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|diecis[eé]is|diecisiete|dieciocho|diecinueve|veinte|veinti\w+|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien|ciento|\w+cientos|medio|media|mil|millones?|mill[oó]n|lucas?|palos?|y)\s*)+(?:pesos?|ars)?\b/gi, '')
-    .replace(/\b(?:gast|pag|compr|ingres|cobr|recib|deposit|invert|ahorr|prest)[a-záéíóúñ]*\b/gi, '')
+    .replace(/\b(?:gast|pag|compr|ingres|cobr|recib|deposit|invert|ahorr|prest)[a-záéíóúñ]*(?=\s|$)/gi, '')
     .replace(/^\s*(?:(?:pesos?|ars|usd|d[oó]lares?)\s*)?(?:(?:en|por|para|con|de|a)\s+)*(?:(?:el|la|los|las|un|uno|una|unos|unas)\s+)*/i, '')
     .replace(/\s+/g, ' ').trim().replace(/^[,.;:\-]+|[,.;:\-]+$/g, '').trim();
   return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);

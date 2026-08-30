@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import config from "../firebase-applet-config.json";
 
 const firebaseConfig = {
@@ -13,6 +14,9 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+if (typeof window !== 'undefined' && window.location.hostname === 'gefi-gestor-financiero.github.io') {
+  initializeAppCheck(app, { provider: new ReCaptchaEnterpriseProvider('6LeHWJ8tAAAAAKESoxjs71VrRD0P7JkSMQuB6Ouo'), isTokenAutoRefreshEnabled: true });
+}
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 provider.addScope("https://www.googleapis.com/auth/drive.file");
