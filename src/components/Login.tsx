@@ -171,7 +171,7 @@ export default function Login({ onLoginSuccess, darkMode, onToggleDarkMode }: Lo
               <Sparkles className="w-3 h-3 text-blue-500" />
               Tus datos se sincronizan de forma segura entre tus dispositivos.
             </p>
-            <div className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[10px]"><button type="button" onClick={() => setInfo('privacy')} className="text-blue-600 dark:text-blue-400 hover:underline">Privacidad</button><button type="button" onClick={() => setInfo('terms')} className="text-blue-600 dark:text-blue-400 hover:underline">Términos de uso</button></div>
+            <div className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[10px]"><button type="button" onClick={() => setInfo('privacy')} className="text-blue-600 dark:text-blue-400 hover:underline">Privacidad</button><button type="button" onClick={() => setInfo('terms')} className="text-blue-600 dark:text-blue-400 hover:underline">Términos de uso</button><a href="mailto:gefisupport@gmail.com" className="text-blue-600 dark:text-blue-400 hover:underline">Soporte</a></div>
           </div>
         </div>
       </motion.div>
