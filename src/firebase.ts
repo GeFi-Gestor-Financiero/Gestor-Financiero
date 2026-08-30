@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { enableMultiTabIndexedDbPersistence, getFirestore } from "firebase/firestore";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import config from "../firebase-applet-config.json";
 
@@ -26,6 +26,13 @@ const dbId = (config as any).firestoreDatabaseId || "ai-studio-a94cc835-b2e3-429
 const db = dbId && dbId !== "(default)"
   ? getFirestore(app, dbId)
   : getFirestore(app);
+
+// Conserva los datos de Firestore en el dispositivo. De esta manera la app
+// puede abrirse y registrar cambios sin conexión; Firebase los sincroniza
+// automáticamente cuando vuelve Internet.
+if (typeof window !== 'undefined') {
+  enableMultiTabIndexedDbPersistence(db).catch(() => undefined);
+}
 
 export enum OperationType {
   CREATE = 'create',
@@ -75,4 +82,3 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 }
 
 export { app, auth, db, provider };
-

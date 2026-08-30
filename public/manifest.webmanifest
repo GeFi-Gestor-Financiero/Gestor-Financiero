@@ -1,0 +1,19 @@
+{
+  "name": "GeFi · Gestor Financiero",
+  "short_name": "GeFi",
+  "description": "Tu gestor financiero personal, disponible incluso sin conexión.",
+  "lang": "es-AR",
+  "start_url": "/Gestor-Financiero/",
+  "scope": "/Gestor-Financiero/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/Gestor-Financiero/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
