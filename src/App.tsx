@@ -49,7 +49,7 @@ export default function App() {
  const [quickLinkMenu,setQuickLinkMenu]=useState<{id:string;x:number;y:number}|null>(null), [quickLinkEdit,setQuickLinkEdit]=useState<{id:string;nombre:string;url:string}|null>(null), [quickLinkEditError,setQuickLinkEditError]=useState(''), [quickLinkDelete,setQuickLinkDelete]=useState<string|null>(null);
  const now=new Date(); const [month,setMonth]=useState(now.getMonth()), [year,setYear]=useState(now.getFullYear());
  useEffect(()=>onAuthStateChanged(auth,u=>{setUser(u);setLoading(false); if(u) setDoc(doc(db,'users',u.uid),{email:u.email||null,displayName:u.displayName||null,updatedAt:Date.now()},{merge:true});}),[]);
- useEffect(()=>{if(!isPageReload)return;const timer=window.setTimeout(()=>setReloadDelayDone(true),1600);return()=>window.clearTimeout(timer)},[isPageReload]);
+ useEffect(()=>{if(!isPageReload)return;const timer=window.setTimeout(()=>setReloadDelayDone(true),1000);return()=>window.clearTimeout(timer)},[isPageReload]);
  useEffect(()=>{ document.documentElement.classList.toggle('dark',settings.darkMode); },[settings.darkMode]);
  useEffect(()=>{const timer=window.setInterval(()=>setCurrentHour(new Date().getHours()),60_000);return()=>window.clearInterval(timer)},[]);
  useEffect(()=>writeCache('settings',settings),[settings]);
