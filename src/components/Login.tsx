@@ -16,6 +16,7 @@ export default function Login({ onLoginSuccess, darkMode, onToggleDarkMode }: Lo
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [registering, setRegistering] = useState(false);
+  const [info, setInfo] = useState<'privacy' | 'terms' | null>(null);
 
   const handleGoogleLogin = async () => {
     setLoading(true);
@@ -168,12 +169,19 @@ export default function Login({ onLoginSuccess, darkMode, onToggleDarkMode }: Lo
           <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 text-center">
             <p className="text-[10px] text-slate-400 dark:text-slate-500 font-sans flex items-center justify-center gap-1">
               <Sparkles className="w-3 h-3 text-blue-500" />
-              Los datos se guardarán de forma segura en Firestore.
+              Tus datos se sincronizan de forma segura entre tus dispositivos.
             </p>
+            <div className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[10px]"><button type="button" onClick={() => setInfo('privacy')} className="text-blue-600 dark:text-blue-400 hover:underline">Privacidad</button><button type="button" onClick={() => setInfo('terms')} className="text-blue-600 dark:text-blue-400 hover:underline">Términos de uso</button></div>
           </div>
         </div>
       </motion.div>
+      {info && <PublicInfoDialog type={info} onClose={() => setInfo(null)} />}
     </div>
   );
+}
+
+function PublicInfoDialog({ type, onClose }: { type: 'privacy' | 'terms'; onClose: () => void }) {
+  const privacy = type === 'privacy';
+  return <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/70 p-4"><section role="dialog" aria-modal="true" aria-label={privacy ? 'Política de privacidad' : 'Términos de uso'} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900"><h2 className="text-lg font-bold">{privacy ? 'Política de privacidad' : 'Términos de uso'}</h2>{privacy ? <div className="mt-4 space-y-3 text-sm leading-6 text-slate-600 dark:text-slate-300"><p>GeFi guarda tus movimientos, cuentas y preferencias en tu cuenta para sincronizarlos entre tus dispositivos.</p><p>No vendemos tus datos ni los usamos para publicidad. Podés descargar un respaldo desde Configuración y eliminar los movimientos que no quieras conservar.</p><p>El acceso se protege mediante tu inicio de sesión. No compartas tu contraseña con otras personas.</p></div> : <div className="mt-4 space-y-3 text-sm leading-6 text-slate-600 dark:text-slate-300"><p>GeFi es una herramienta de organización personal. Los datos y cálculos son informativos y no constituyen asesoramiento financiero, contable ni legal.</p><p>Verificá siempre la información antes de tomar decisiones económicas. Sos responsable de los movimientos que registres y de mantener segura tu cuenta.</p><p>La disponibilidad de funciones de conexión puede depender de Internet y de los servicios de autenticación.</p></div>}<div className="mt-6 flex justify-end"><button type="button" onClick={onClose} className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white">Entendido</button></div></section></div>
 }
 export { Login };
