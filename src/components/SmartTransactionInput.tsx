@@ -122,7 +122,7 @@ function inferCategory(text: string, categories: string[]) {
 export default function SmartTransactionInput({ accounts, categories, currency = 'ARS', language = 'es', onAddTransaction }: Props) {
   const [text, setText] = useState(''), [error, setError] = useState(''), [saving, setSaving] = useState(false),[listening,setListening]=useState(false);
   const currencyName=new Intl.NumberFormat(language==='en'?'en-US':'es-AR',{style:'currency',currency,currencyDisplay:'name'}).formatToParts(100).find(part=>part.type==='currency')?.value||currency;
-  const example=language==='en'?`E.g.: today I spent 100 ${currencyName} (${currency}) at Walmart`:`Ej: hoy gasté 100 ${currencyName} (${currency}) en el supermercado`;
+  const example=language==='en'?`E.g.: today I spent 100 ${currencyName} at Walmart`:`Ej: hoy gasté 100 ${currencyName} en el supermercado`;
   const analyzeAndSave = async (spokenText=text) => {
     if (saving) return;
     if (!spokenText.trim()) { setError('Escribí o dictá el movimiento que querés registrar.'); return; }
