@@ -175,7 +175,7 @@ function CurrencyPreferenceModal({settings,onSave}:{settings:UserSettings;onSave
 
 function HelpModal({language,onClose}:{language:'es'|'en';onClose:()=>void}) {
  useEffect(()=>{if(language==='en')return applyLanguage('en',false)},[language]);
- return <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/60 p-4" onMouseDown={event=>event.target===event.currentTarget&&onClose()}><section role="dialog" aria-modal="true" aria-label="Ayuda" className="w-full max-w-xl rounded-2xl bg-slate-100 p-4 shadow-2xl dark:bg-slate-950"><div className="mb-3 flex items-center justify-between"><h2 className="font-bold">Ayuda</h2><button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-500 hover:bg-white dark:hover:bg-slate-900"><X className="h-4 w-4"/></button></div><HelpPanel/></section></div>
+ return <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/60 p-4" onMouseDown={event=>event.target===event.currentTarget&&onClose()}><section role="dialog" aria-modal="true" aria-label={language==='en'?'Help':'Ayuda'} className="w-full max-w-xl rounded-2xl bg-slate-100 p-4 shadow-2xl dark:bg-slate-950"><div className="mb-3 flex items-center justify-between"><h2 className="font-bold">{language==='en'?'Help':'Ayuda'}</h2><button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-500 hover:bg-white dark:hover:bg-slate-900"><X className="h-4 w-4"/></button></div><HelpPanel language={language}/></section></div>
 }
 
 function AccountModal({user,language,onClose,onResetData,onDeleteAccount}:{user:User;language:'es'|'en';onClose:()=>void;onResetData:()=>Promise<void>;onDeleteAccount:()=>Promise<void>}) {
