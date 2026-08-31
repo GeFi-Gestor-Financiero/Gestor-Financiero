@@ -1,0 +1,18 @@
+import { useState } from 'react';
+import { Pencil, X } from 'lucide-react';
+
+type Props = { categories: string[]; budgets: Record<string, number>; spent: Record<string, number>; hidden?: boolean; onChange: (budgets: Record<string, number>) => void };
+
+const money = (value: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(value);
+
+export default function BudgetPanel({ categories, budgets, spent, hidden = false, onChange }: Props) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+  const save = () => { if (!editing) return; const value = Number(draft); const next = { ...budgets }; if (Number.isFinite(value) && value > 0) next[editing] = value; else delete next[editing]; onChange(next); setEditing(null); };
+  const configured = categories.filter(category => Number(budgets[category]) > 0);
+  return <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div className="flex items-start justify-between gap-3"><div><h3 className="text-sm font-bold">Presupuestos del mes</h3><p className="mt-1 text-[11px] text-slate-400">Definí un límite por categoría y seguí cuánto llevás gastado.</p></div></div>
+    <div className="mt-3 space-y-3">{configured.map(category => { const limit = budgets[category], value = spent[category] || 0, percent = Math.min(100, limit ? value / limit * 100 : 0), exceeded = value > limit; return <div key={category}><div className="mb-1 flex items-center justify-between gap-2 text-xs"><span className="font-medium">{category}</span><span className={exceeded ? 'font-bold text-rose-600' : 'text-slate-500 dark:text-slate-400'}>{hidden ? '••••' : `${money(value)} / ${money(limit)}`}</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className={`h-full rounded-full ${exceeded ? 'bg-rose-500' : percent >= 80 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${percent}%` }}/></div></div>})}{configured.length===0&&<p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500 dark:bg-slate-950 dark:text-slate-400">Todavía no configuraste presupuestos.</p>}</div>
+    <div className="mt-4 border-t border-slate-100 pt-3 dark:border-slate-800"><p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">Configurar límites</p><div className="space-y-2">{categories.map(category => <div key={category} className="flex items-center gap-2"><span className="min-w-0 flex-1 truncate text-xs">{category}</span>{editing === category ? <><input autoFocus type="number" min="0" step="any" value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') save(); if (event.key === 'Escape') setEditing(null); }} className="w-28 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs dark:border-slate-700 dark:bg-slate-950" placeholder="0"/><button type="button" onClick={save} className="rounded-lg bg-blue-600 px-2 py-1.5 text-[10px] font-bold text-white">Guardar</button><button type="button" onClick={() => setEditing(null)} className="p-1 text-slate-400"><X className="h-4 w-4"/></button></> : <button type="button" onClick={() => { setEditing(category); setDraft(budgets[category] ? String(budgets[category]) : ''); }} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-[10px] font-bold text-blue-600 dark:border-slate-700 dark:text-blue-400"><Pencil className="h-3 w-3"/>{budgets[category] ? money(budgets[category]) : 'Definir'}</button>}</div>)}</div></div>
+  </section>;
+}
