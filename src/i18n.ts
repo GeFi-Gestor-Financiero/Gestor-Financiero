@@ -15,7 +15,7 @@ const phrases: Record<string, string> = {
   'Papelera de movimientos': 'Transaction bin', 'Restaurar': 'Restore', 'Eliminar definitivamente': 'Delete permanently', 'Eliminar para siempre': 'Delete forever',
   'Descargar JSON': 'Download JSON', 'Respaldo de datos': 'Data backup', 'Elegir respaldo': 'Choose backup', 'Importar': 'Import',
   'Descargá una copia de tus datos o recuperá un respaldo de GeFi. La importación combina el archivo con tus datos actuales.': 'Download a copy of your data or restore a GeFi backup. Importing combines the file with your current data.', 'Respaldo importado correctamente.': 'Backup imported successfully.',
-  'Política de privacidad': 'Privacy policy', 'Términos de uso': 'Terms of use', 'Soporte': 'Support', '¿Necesitás ayuda?': 'Need help?',
+  'Política de privacidad': 'Privacy policy', 'Términos de uso': 'Terms of use', 'Soporte': 'Support', 'Ayuda': 'Help', '¿Necesitás ayuda?': 'Need help?',
   'Bienvenido a GeFi': 'Welcome to GeFi', 'GUÍA INICIAL': 'GETTING STARTED', 'Omitir': 'Skip', 'Siguiente': 'Next', 'Atrás': 'Back', 'Empezar': 'Get started', 'Entendido': 'Got it',
   'Fecha': 'Date', 'Categoría': 'Category', 'Monto': 'Amount', 'Cuenta origen': 'Source account', 'Cuenta destino': 'Destination account', 'Sale de': 'From', 'Entra a': 'To',
   'Ingreso': 'Income', 'Gasto': 'Expense', 'Inversión': 'Investment', 'Ahorro': 'Savings', 'Transferencia entre cuenta y efectivo': 'Transfer between account and cash', 'Préstamo': 'Loan',
