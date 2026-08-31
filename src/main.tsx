@@ -5,6 +5,7 @@ import './index.css'
 import { NotificationProvider } from './context/NotificationContext'
 import ToastContainer from './components/ToastContainer'
 import AlertContainer from './components/AlertContainer'
+import AppErrorBoundary from './components/AppErrorBoundary'
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -15,7 +16,7 @@ if ('serviceWorker' in navigator) {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <NotificationProvider>
-      <App />
+      <AppErrorBoundary><App /></AppErrorBoundary>
       <ToastContainer />
       <AlertContainer />
     </NotificationProvider>
