@@ -1,0 +1,12 @@
+import { BarChart3 } from 'lucide-react';
+
+type Props = { income: number; expense: number; investment: number; categories: Record<string, number>; hidden?: boolean };
+const money = (value: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(value);
+
+export default function MonthlyReportPanel({ income, expense, investment, categories, hidden = false }: Props) {
+  const rows = [{ label: 'Ingresos', value: income, color: 'bg-emerald-500' }, { label: 'Gastos', value: expense, color: 'bg-rose-500' }, { label: 'Inversiones', value: investment, color: 'bg-amber-500' }];
+  const max = Math.max(1, ...rows.map(row => row.value));
+  const top = Object.entries(categories).sort((left, right) => right[1] - left[1]).slice(0, 4);
+  const topMax = Math.max(1, ...top.map(([, value]) => value));
+  return <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900"><div className="flex items-center gap-2"><BarChart3 className="h-4 w-4 text-blue-600"/><div><h3 className="text-sm font-bold">Reporte del mes</h3><p className="mt-1 text-[11px] text-slate-400">Resumen de tus movimientos del período seleccionado.</p></div></div><div className="mt-4 space-y-3">{rows.map(row => <div key={row.label}><div className="mb-1 flex justify-between gap-3 text-xs"><span>{row.label}</span><strong className="font-mono">{hidden ? '••••' : money(row.value)}</strong></div><div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className={`h-full rounded-full ${row.color}`} style={{width:`${Math.min(100, row.value / max * 100)}%`}}/></div></div>)}</div><div className="mt-5 border-t border-slate-100 pt-4 dark:border-slate-800"><p className="mb-3 text-[10px] font-bold uppercase tracking-wide text-slate-400">Gastos por categoría</p>{top.length ? <div className="space-y-2.5">{top.map(([name, value]) => <div key={name}><div className="mb-1 flex justify-between gap-3 text-xs"><span className="truncate">{name}</span><span className="font-mono text-slate-500 dark:text-slate-400">{hidden ? '••••' : money(value)}</span></div><div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-blue-500" style={{width:`${Math.min(100, value / topMax * 100)}%`}}/></div></div>)}</div> : <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500 dark:bg-slate-950 dark:text-slate-400">Todavía no hay gastos para mostrar este mes.</p>}</div></section>;
+}
