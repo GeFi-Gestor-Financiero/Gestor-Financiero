@@ -179,6 +179,7 @@ function AccountModal({user,language,onClose,onResetData,onDeleteAccount}:{user:
 }
 
 function InsightsModal({settings,categorySpent,summary,onClose,onSave}:{settings:UserSettings;categorySpent:Record<string,number>;summary:{income:number;expense:number;investment:number};onClose:()=>void;onSave:(settings:UserSettings)=>Promise<void>}) {
+ useEffect(()=>{if(settings.language==='en')return applyLanguage('en',false)},[settings.language]);
  return <div className="fixed inset-0 z-[85] overflow-auto bg-slate-950/60 p-3 sm:p-6" onMouseDown={event=>event.target===event.currentTarget&&onClose()}><section role="dialog" aria-modal="true" aria-label="Presupuestos y reportes" className="mx-auto w-full max-w-3xl rounded-2xl bg-slate-100 p-4 shadow-2xl dark:bg-slate-950 sm:p-6"><div className="mb-5 flex items-center justify-between"><div><h2 className="font-bold">Presupuestos y reportes</h2><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Análisis del mes seleccionado.</p></div><button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-500 hover:bg-white dark:hover:bg-slate-900"><X className="h-4 w-4"/></button></div><div className="grid gap-5 md:grid-cols-2"><BudgetPanel categories={settings.categorias} budgets={settings.budgets||{}} spent={categorySpent} hidden={settings.hideBalances} onChange={budgets=>void onSave({...settings,budgets})}/><MonthlyReportPanel income={summary.income} expense={summary.expense} investment={summary.investment} categories={categorySpent} hidden={settings.hideBalances}/></div></section></div>
 }
 
