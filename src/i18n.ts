@@ -23,6 +23,7 @@ const phrases: Record<string, string> = {
   'Idioma': 'Language', 'Español': 'Spanish', 'Idioma / Language': 'Language / Idioma',
   'Preferencias generales': 'General preferences', 'Organización': 'Organization', 'Datos': 'Data', 'Secciones de configuración': 'Settings sections', 'Cerrar sin guardar': 'Close without saving',
   'Presupuestos del mes': 'Monthly budgets', 'Definí un límite por categoría y seguí cuánto llevás gastado.': 'Set a limit for each category and track how much you have spent.', 'Todavía no configuraste presupuestos.': 'You have not set up any budgets yet.', 'Configurar límites': 'Set limits', 'Definir': 'Set',
+  'Ver presupuestos y reportes': 'View budgets and reports', 'Presupuestos y reportes': 'Budgets and reports', 'Análisis del mes seleccionado.': 'Analysis for the selected month.',
   'Metas de ahorro': 'Savings goals', 'Tus movimientos de ahorro actualizan el progreso.': 'Your savings transactions update the progress.', 'Fondo de emergencia': 'Emergency fund', 'Objetivo': 'Goal', 'Eliminar meta': 'Delete goal', 'Creá una meta para visualizar el avance de tus ahorros.': 'Create a goal to track your savings progress.',
   'Cambios sincronizados': 'Changes synced',
   'Reporte del mes': 'Monthly report', 'Resumen de tus movimientos del período seleccionado.': 'Summary of your transactions for the selected period.', 'Gastos por categoría': 'Expenses by category', 'Todavía no hay gastos para mostrar este mes.': 'There are no expenses to show this month.',

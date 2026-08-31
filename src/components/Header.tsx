@@ -15,6 +15,7 @@ interface HeaderProps {
   hideBalances: boolean;
   onToggleHideBalances: () => void;
   onOpenSettings: () => void;
+  onOpenAccount: () => void;
 }
 
 const MESES = [
@@ -32,7 +33,7 @@ export default function Header({
   darkMode,
   onToggleDarkMode,
   hideBalances,
-  onToggleHideBalances, onOpenSettings
+  onToggleHideBalances, onOpenSettings, onOpenAccount
 }: HeaderProps) {
 
   const handlePrevMonth = () => {
@@ -122,7 +123,7 @@ export default function Header({
           {/* User profile / Logout */}
           {user && (
             <div className="flex items-center justify-between md:justify-end gap-2 sm:gap-3 border-t md:border-t-0 pt-2.5 md:pt-0 border-slate-100 dark:border-slate-800 min-w-0">
-              <div className="flex items-center gap-2 min-w-0">
+              <button type="button" onClick={onOpenAccount} title="Cuenta" className="flex items-center gap-2 min-w-0 rounded-lg text-left hover:bg-slate-50 dark:hover:bg-slate-800 p-1 transition">
                 {user.photoURL ? (
                   <img
                     src={user.photoURL}
@@ -143,7 +144,7 @@ export default function Header({
                     {user.isAnonymous ? 'Modo Invitado' : user.email}
                   </p>
                 </div>
-              </div>
+              </button>
 
               <div className="flex shrink-0 items-center gap-1">
                 {/* Mostrar/Ocultar montos */}
