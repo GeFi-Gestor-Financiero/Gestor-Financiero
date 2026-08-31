@@ -47,6 +47,7 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
     setFecha(getInitialDateString());
   }, [selectedMonth, selectedYear]);
   React.useEffect(() => { setMoneda(preferredCurrency); setCotizacion(preferredCurrency === 'ARS' ? '1' : cotizacion); }, [preferredCurrency]);
+  React.useEffect(() => { const syncCurrency=(event:Event)=>{const currency=(event as CustomEvent<string>).detail;if(currency)setMoneda(currency);};window.addEventListener('gefi:currency-preference',syncCurrency);return()=>window.removeEventListener('gefi:currency-preference',syncCurrency); }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
