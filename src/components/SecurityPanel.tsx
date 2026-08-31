@@ -1,0 +1,10 @@
+import { useState } from 'react';
+import { KeyRound, Mail, ShieldCheck } from 'lucide-react';
+
+type Props = { email?: string | null; anonymous?: boolean; verified?: boolean; onResetPassword: () => Promise<void> };
+
+export default function SecurityPanel({ email, anonymous = false, verified = false, onResetPassword }: Props) {
+  const [message, setMessage] = useState('');
+  const requestReset = async () => { if (!email || anonymous) return; try { await onResetPassword(); setMessage('Te enviamos un correo para cambiar la contraseña. Revisá también el correo no deseado.'); } catch { setMessage('No se pudo enviar el correo. Intentá nuevamente más tarde.'); } };
+  return <section className="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm dark:border-emerald-900/60 dark:bg-slate-900"><div className="flex gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 text-emerald-600"/><div><h3 className="text-sm font-bold">Seguridad de la cuenta</h3><p className="mt-1 text-[11px] text-slate-400">Tus datos se guardan separados por cuenta y solo son accesibles después de iniciar sesión.</p></div></div><div className="mt-4 space-y-2 rounded-xl bg-emerald-50 p-3 text-xs dark:bg-emerald-950/25"><p className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-emerald-600"/><span className="font-medium">{anonymous ? 'Modo invitado' : email || 'Cuenta sin correo'}</span></p><p className="text-emerald-800 dark:text-emerald-300">{anonymous ? 'Para conservar y recuperar tus datos en otros dispositivos, usá una cuenta con correo.' : verified ? 'Correo verificado.' : 'La seguridad de tu cuenta depende de mantener privado tu acceso.'}</p></div>{!anonymous&&email&&<button type="button" onClick={() => void requestReset()} className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 px-3 py-2 text-xs font-bold text-emerald-700 dark:border-emerald-900/60 dark:text-emerald-300"><KeyRound className="h-3.5 w-3.5"/>Cambiar contraseña</button>}{message&&<p className="mt-3 rounded-lg bg-emerald-50 p-2.5 text-xs text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">{message}</p>}</section>;
+}
