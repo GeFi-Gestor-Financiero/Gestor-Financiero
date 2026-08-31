@@ -23,7 +23,7 @@ export interface FixedExpense { id: string; nombre: string; monto: number; moned
 export interface LoanPayment { fecha: string; monto: number; nota?: string; }
 export interface Loan { id: string; persona: string; monto: number; moneda: string; motivo: string; fecha: string; estado: 'Pendiente' | 'Pagado'; cuentaId?: string; fechaEstimada?: string; pagos: LoanPayment[]; }
 export interface QuickLink { id: string; nombre: string; url: string; }
-export interface UserSettings { darkMode: boolean; hideBalances: boolean; monedaBase: string; monedas: string[]; categorias: string[]; widgets: string[]; quickLinks: QuickLink[]; showSavings?: boolean; onboardingCompleted?: boolean; }
+export interface UserSettings { darkMode: boolean; hideBalances: boolean; monedaBase: string; monedas: string[]; categorias: string[]; widgets: string[]; quickLinks: QuickLink[]; showSavings?: boolean; onboardingCompleted?: boolean; language?: 'es' | 'en'; }
 
 export interface MonthSummary {
   plataInicial: number;
