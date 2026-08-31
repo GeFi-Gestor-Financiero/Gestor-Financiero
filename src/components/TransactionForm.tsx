@@ -9,10 +9,11 @@ interface TransactionFormProps {
   selectedYear: number;
   accounts: Account[];
   currencies: string[];
+  preferredCurrency?: string;
   categories: string[];
 }
 
-export default function TransactionForm({ onAddTransaction, selectedMonth, selectedYear, accounts, currencies, categories }: TransactionFormProps) {
+export default function TransactionForm({ onAddTransaction, selectedMonth, selectedYear, accounts, currencies, preferredCurrency = currencies[0] || 'ARS', categories }: TransactionFormProps) {
   // Set default date as current date formatted in selected month/year to prevent out of bounds
   const getInitialDateString = () => {
     const today = new Date();
@@ -32,7 +33,7 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
   const [categoria, setCategoria] = useState<TransactionType>('Ingreso');
   const [monto, setMonto] = useState<string>('');
   const [motivo, setMotivo] = useState<string>('');
-  const [moneda, setMoneda] = useState('ARS');
+  const [moneda, setMoneda] = useState(preferredCurrency);
   const [cotizacion, setCotizacion] = useState('1');
   const [categoriaDetalle, setCategoriaDetalle] = useState('General');
   const [cuentaOrigen, setCuentaOrigen] = useState('');
@@ -45,6 +46,7 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
   React.useEffect(() => {
     setFecha(getInitialDateString());
   }, [selectedMonth, selectedYear]);
+  React.useEffect(() => { setMoneda(preferredCurrency); setCotizacion(preferredCurrency === 'ARS' ? '1' : cotizacion); }, [preferredCurrency]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
