@@ -1,5 +1,5 @@
 import React from 'react';
-import { LogOut, User, Calendar, ChevronLeft, ChevronRight, TrendingUp, Sun, Moon, Eye, EyeOff, Settings } from 'lucide-react';
+import { LogOut, User, Calendar, ChevronLeft, ChevronRight, TrendingUp, Sun, Moon, Eye, EyeOff, Settings, Languages } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 import { auth } from '../firebase';
 
@@ -169,6 +169,12 @@ export default function Header({
                   className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
                   title="Perfil y configuración"
                 ><Settings className="w-3.5 h-3.5" /></button>
+                <button
+                  onClick={onOpenSettings}
+                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  title="Idioma / Language"
+                  aria-label="Idioma / Language"
+                ><Languages className="w-3.5 h-3.5" /></button>
                 <button
                   onClick={onLogout}
                   className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg transition border border-transparent hover:border-rose-100 dark:hover:border-rose-950/60 cursor-pointer"

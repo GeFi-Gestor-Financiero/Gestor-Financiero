@@ -58,7 +58,7 @@ export default function App() {
  useEffect(()=>onAuthStateChanged(auth,u=>{setUser(u);setLoading(false);if(!u){setTxs([]);setAccounts([]);setFixed([]);setLoans([]);setSettings(defaults);return}setTxs(readCache(userCacheKey(u.uid,'transactions'),[]));setAccounts(readCache(userCacheKey(u.uid,'accounts'),[]));setFixed(readCache(userCacheKey(u.uid,'fixedExpenses'),[]));setLoans(readCache(userCacheKey(u.uid,'loans'),[]));setSettings({...defaults,...readCache<Partial<UserSettings>>(userCacheKey(u.uid,'settings'),{})});setDoc(doc(db,'users',u.uid),{email:u.email||null,displayName:u.displayName||null,updatedAt:Date.now()},{merge:true});}),[]);
  useEffect(()=>{if(!isPageReload)return;const timer=window.setTimeout(()=>setReloadDelayDone(true),1000);return()=>window.clearTimeout(timer)},[isPageReload]);
  useEffect(()=>{ document.documentElement.classList.toggle('dark',settings.darkMode); },[settings.darkMode]);
- useEffect(()=>{const language=settings.language||'es';document.documentElement.lang=language;if(language!=='en')return;return applyLanguage('en')},[settings.language]);
+ useEffect(()=>{const language=settings.language||'es';document.documentElement.lang=language;return applyLanguage(language,language==='en')},[settings.language]);
  useEffect(()=>{const timer=window.setInterval(()=>setCurrentHour(new Date().getHours()),60_000);return()=>window.clearInterval(timer)},[]);
  useEffect(()=>{const update=()=>setIsOnline(navigator.onLine);window.addEventListener('online',update);window.addEventListener('offline',update);return()=>{window.removeEventListener('online',update);window.removeEventListener('offline',update)}},[]);
  useEffect(()=>{if(user)writeCache(userCacheKey(user.uid,'settings'),settings)},[user,settings]);
