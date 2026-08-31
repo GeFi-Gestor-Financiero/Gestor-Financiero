@@ -14,9 +14,9 @@ import SecurityPanel from './components/SecurityPanel';
 import AccessibilityPanel from './components/AccessibilityPanel';
 import { applyLanguage } from './i18n';
 
-const defaults: UserSettings = { darkMode: false, hideBalances: false, monedaBase: 'ARS', monedas: ['ARS','USD','EUR','BRL'], categorias: ['General','Alimentos','Transporte','Salud','Educación','Hogar','Ocio','Trabajo'], widgets: ['patrimonio','cuentas','efectivo','inversiones'], quickLinks: [], showSavings: true, language: 'es', budgets: {}, savingsGoals: [], fontScale: 'normal' };
+const defaults: UserSettings = { darkMode: false, hideBalances: false, monedaBase: 'ARS', monedas: ['ARS','USD','EUR','BRL'], categorias: ['General','Alimentos','Transporte','Salud','Educación','Hogar','Ocio','Trabajo'], widgets: ['patrimonio','cuentas','efectivo','inversiones'], quickLinks: [], showSavings: true, language: 'es', budgets: {}, savingsGoals: [], fontScale: 'normal', currencySetupCompleted: true };
 const regionalCurrency: Record<string,string> = { AR:'ARS', US:'USD', CA:'CAD', MX:'MXN', BR:'BRL', CL:'CLP', CO:'COP', PE:'PEN', UY:'UYU', PY:'PYG', BO:'BOB', EC:'USD', VE:'VES', GB:'GBP', IE:'EUR', ES:'EUR', FR:'EUR', DE:'EUR', IT:'EUR', PT:'EUR', NL:'EUR', BE:'EUR', AT:'EUR', FI:'EUR', GR:'EUR', JP:'JPY', KR:'KRW', CN:'CNY', IN:'INR', AU:'AUD', NZ:'NZD', ZA:'ZAR', CH:'CHF', SE:'SEK', NO:'NOK', DK:'DKK', PL:'PLN', TR:'TRY', AE:'AED', SA:'SAR' };
-const localizedDefaults=():UserSettings=>{const locale=typeof navigator==='undefined'?'es-AR':(Intl.DateTimeFormat().resolvedOptions().locale||navigator.language||'es-AR');const country=locale.split('-').pop()?.toUpperCase()||'AR';const currency=regionalCurrency[country]||'USD';const language=locale.toLowerCase().startsWith('en')?'en':'es';return {...defaults,monedaBase:currency,monedas:[currency,...defaults.monedas.filter(code=>code!==currency)],language};};
+const localizedDefaults=():UserSettings=>{const locale=typeof navigator==='undefined'?'es-AR':(Intl.DateTimeFormat().resolvedOptions().locale||navigator.language||'es-AR');const country=locale.split('-').pop()?.toUpperCase()||'AR';const currency=regionalCurrency[country]||'USD';const language=locale.toLowerCase().startsWith('en')?'en':'es';return {...defaults,monedaBase:currency,monedas:[currency,...defaults.monedas.filter(code=>code!==currency)],language,currencySetupCompleted:false};};
 const today = () => new Date().toISOString().slice(0,10);
 const toArs = (t: Transaction) => t.monto * (t.moneda === 'ARS' || !t.moneda ? 1 : Number(t.cotizacion || 1));
 const isBalanceCorrection = (t: Pick<Transaction,'motivo'|'categoriaDetalle'>) => t.categoriaDetalle === 'Corrección de saldo' || /^Corrección de\s/i.test(t.motivo || '');
@@ -58,7 +58,7 @@ export default function App() {
  const [syncError,setSyncError]=useState('');
  const [isOnline,setIsOnline]=useState(()=>navigator.onLine);
  const [transferMode,setTransferMode]=useState<'toAccount'|'toCash'|null>(null);
- const [showTutorial,setShowTutorial]=useState(false);
+ const [showTutorial,setShowTutorial]=useState(false), [showCurrencySetup,setShowCurrencySetup]=useState(false);
  const [showPrivacy,setShowPrivacy]=useState(false), [showAccount,setShowAccount]=useState(false), [showInsights,setShowInsights]=useState(false);
  const [currentHour,setCurrentHour]=useState(()=>new Date().getHours());
  const [quickLinkMenu,setQuickLinkMenu]=useState<{id:string;x:number;y:number}|null>(null), [quickLinkEdit,setQuickLinkEdit]=useState<{id:string;nombre:string;url:string}|null>(null), [quickLinkEditError,setQuickLinkEditError]=useState(''), [quickLinkDelete,setQuickLinkDelete]=useState<string|null>(null);
@@ -87,7 +87,7 @@ export default function App() {
  const saveSettings=async(next:UserSettings)=>{setSettings(next);if(user) await setDoc(doc(db,'users',user.uid,'settings','finance'),next).catch(()=>undefined)};
  const resetAllData=async()=>{if(!user)throw new Error('No hay una cuenta activa.');for(const name of ['transactions','accounts','fixedExpenses','loans']){const snapshot=await getDocs(collection(db,'users',user.uid,name));await Promise.all(snapshot.docs.map(item=>deleteDoc(item.ref)))}setTxs([]);setAccounts([]);setFixed([]);setLoans([]);await saveSettings({...defaults,onboardingCompleted:true});};
  const removeAccount=async()=>{if(!user)throw new Error('No hay una cuenta activa.');await resetAllData();await deleteDoc(doc(db,'users',user.uid)).catch(()=>undefined);await deleteUser(user);};
- const completeTutorial=()=>{setShowTutorial(false);void saveSettings({...settings,onboardingCompleted:true})};
+ const completeTutorial=()=>{setShowTutorial(false);if(settings.currencySetupCompleted===false)setShowCurrencySetup(true);void saveSettings({...settings,onboardingCompleted:true})};
  const saveQuickLinkEdit=()=>{if(!quickLinkEdit)return;const url=quickLinkEdit.url.trim();if(!/^https?:\/\//.test(url)){setQuickLinkEditError('La URL debe comenzar con http:// o https://.');return}saveSettings({...settings,quickLinks:settings.quickLinks.map(x=>x.id===quickLinkEdit.id?{...x,nombre:quickLinkEdit.nombre.trim(),url}:x)});setQuickLinkEdit(null);setQuickLinkEditError('')};
  const currentTxs=useMemo(()=>{const seen=new Set<string>();return txs.filter(t=>!t.deletedAt&&Number.isFinite(t.monto)&&t.monto>0&&!/\bundefined\b/i.test(t.motivo||'')&&(t.motivo||'').trim()!=='Restauración del saldo anterior').filter(t=>{const key=JSON.stringify([t.fecha,t.categoria,Number(t.monto),t.moneda||'ARS',Number(t.cotizacion||1),(t.motivo||'').trim(),(t.categoriaDetalle||'').trim(),t.cuentaOrigen||'',t.cuentaDestino||'']);if(seen.has(key))return false;seen.add(key);return true})},[txs]);
  const trashedTxs=useMemo(()=>txs.filter(t=>Boolean(t.deletedAt)).sort((a,b)=>(b.deletedAt||0)-(a.deletedAt||0)),[txs]);
@@ -158,8 +158,17 @@ export default function App() {
  {showInsights&&<InsightsModal settings={settings} categorySpent={categorySpent} summary={summary} onClose={()=>setShowInsights(false)} onSave={saveSettings}/>}
  {showAccount&&<AccountModal user={user} language={settings.language||'es'} onClose={()=>setShowAccount(false)} onResetData={resetAllData} onDeleteAccount={removeAccount}/>}
  {showTutorial&&<OnboardingTutorial onFinish={completeTutorial}/>}
+ {showCurrencySetup&&<CurrencyPreferenceModal settings={settings} onSave={async monedaBase=>{const monedas=[monedaBase,...settings.monedas.filter(currency=>currency!==monedaBase)];await saveSettings({...settings,monedaBase,monedas,currencySetupCompleted:true});setShowCurrencySetup(false)}}/>}
  {showPrivacy&&<PrivacyPolicyModal language={settings.language||'es'} onClose={()=>setShowPrivacy(false)}/>}
  {showSettings&&<SettingsPanel settings={settings} accounts={accounts} fixed={fixed} loans={loans} trashedTxs={trashedTxs} correctionValues={{accounts:summary.accounts,cash:summary.cash,patrimony:summary.patrimonio,investment:summary.investment}} onCorrectBalance={correctBalance} onRestoreTx={restoreTx} onPermanentlyDeleteTx={permanentlyDeleteTx} onClose={()=>setShowSettings(false)} onSave={saveSettings} onExport={exportAll} onImport={importBackup} onAddAccount={addAccount} onDeleteAccount={deleteAccount} onAddLoan={addLoan}/>}</div>
+}
+
+function CurrencyPreferenceModal({settings,onSave}:{settings:UserSettings;onSave:(currency:string)=>Promise<void>}) {
+ const [currency,setCurrency]=useState(settings.monedaBase),[saving,setSaving]=useState(false);
+ useEffect(()=>{if(settings.language==='en')return applyLanguage('en',false)},[settings.language]);
+ const options=['ARS','USD','EUR','BRL','MXN','CLP','COP','PEN','UYU','GBP','CAD','AUD','JPY','CNY','INR'];
+ const labels:Record<string,string>={ARS:'Peso argentino (ARS)',USD:'US Dollar (USD)',EUR:'Euro (EUR)',BRL:'Real brasileño (BRL)',MXN:'Peso mexicano (MXN)',CLP:'Peso chileno (CLP)',COP:'Peso colombiano (COP)',PEN:'Sol peruano (PEN)',UYU:'Peso uruguayo (UYU)',GBP:'Libra esterlina (GBP)',CAD:'Dólar canadiense (CAD)',AUD:'Dólar australiano (AUD)',JPY:'Yen japonés (JPY)',CNY:'Yuan chino (CNY)',INR:'Rupia india (INR)'};
+ return <div className="fixed inset-0 z-[110] grid place-items-center bg-slate-950/70 p-4"><section role="dialog" aria-modal="true" aria-label="Moneda preferida" className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900"><p className="text-[10px] font-bold tracking-wide text-blue-600 dark:text-blue-400">CONFIGURACIÓN INICIAL</p><h2 className="mt-2 text-xl font-bold">Elegí tu moneda preferida</h2><p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">La usamos como moneda principal para mostrar tus resúmenes. Podés cambiarla más adelante desde Configuración.</p><label className="mt-5 block text-xs font-bold text-slate-600 dark:text-slate-300">Moneda<select value={currency} onChange={event=>setCurrency(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-950">{options.map(option=><option key={option} value={option}>{labels[option]}</option>)}</select></label><button type="button" disabled={saving} onClick={async()=>{setSaving(true);await onSave(currency)}} className="mt-5 w-full rounded-xl bg-blue-600 py-3 text-xs font-bold text-white disabled:opacity-60">{saving?'Guardando…':'Continuar'}</button></section></div>
 }
 
 function AccountModal({user,language,onClose,onResetData,onDeleteAccount}:{user:User;language:'es'|'en';onClose:()=>void;onResetData:()=>Promise<void>;onDeleteAccount:()=>Promise<void>}) {
