@@ -10,10 +10,11 @@ interface TransactionFormProps {
   accounts: Account[];
   currencies: string[];
   preferredCurrency?: string;
+  baseCurrency?: string;
   categories: string[];
 }
 
-export default function TransactionForm({ onAddTransaction, selectedMonth, selectedYear, accounts, currencies, preferredCurrency = currencies[0] || 'ARS', categories }: TransactionFormProps) {
+export default function TransactionForm({ onAddTransaction, selectedMonth, selectedYear, accounts, currencies, preferredCurrency = currencies[0] || 'ARS', baseCurrency = currencies[0] || 'ARS', categories }: TransactionFormProps) {
   // Set default date as current date formatted in selected month/year to prevent out of bounds
   const getInitialDateString = () => {
     const today = new Date();
@@ -34,6 +35,7 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
   const [monto, setMonto] = useState<string>('');
   const [motivo, setMotivo] = useState<string>('');
   const [moneda, setMoneda] = useState(preferredCurrency);
+  const [effectiveBaseCurrency, setEffectiveBaseCurrency] = useState(baseCurrency);
   const [cotizacion, setCotizacion] = useState('1');
   const [categoriaDetalle, setCategoriaDetalle] = useState('General');
   const [cuentaOrigen, setCuentaOrigen] = useState('');
@@ -41,13 +43,14 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [showMoreMobile, setShowMoreMobile] = useState(false);
+  const quoteLabel = typeof document !== 'undefined' && document.documentElement.lang === 'en' ? `Exchange rate to ${effectiveBaseCurrency}` : `Cotización a ${effectiveBaseCurrency}`;
 
   // Sync date input if user shifts selected month/year and current date is no longer in range
   React.useEffect(() => {
     setFecha(getInitialDateString());
   }, [selectedMonth, selectedYear]);
-  React.useEffect(() => { setMoneda(preferredCurrency); setCotizacion(preferredCurrency === 'ARS' ? '1' : cotizacion); }, [preferredCurrency]);
-  React.useEffect(() => { const syncCurrency=(event:Event)=>{const currency=(event as CustomEvent<string>).detail;if(currency)setMoneda(currency);};window.addEventListener('gefi:currency-preference',syncCurrency);return()=>window.removeEventListener('gefi:currency-preference',syncCurrency); }, []);
+  React.useEffect(() => { setEffectiveBaseCurrency(baseCurrency); setMoneda(preferredCurrency); setCotizacion(preferredCurrency === baseCurrency ? '1' : cotizacion); }, [preferredCurrency, baseCurrency]);
+  React.useEffect(() => { const syncCurrency=(event:Event)=>{const currency=(event as CustomEvent<string>).detail;if(currency){setMoneda(currency);setEffectiveBaseCurrency(currency);setCotizacion('1');}};window.addEventListener('gefi:currency-preference',syncCurrency);return()=>window.removeEventListener('gefi:currency-preference',syncCurrency); }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,8 +130,8 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">Moneda</label><select value={moneda} onChange={e => setMoneda(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">{currencies.map(c => <option key={c}>{c}</option>)}</select></div>
-          <div className="hidden space-y-1.5 sm:block"><label className="text-[11px] font-bold text-slate-500 uppercase">Cotización a ARS</label><input type="number" min="0.0001" step="any" value={cotizacion} onChange={e => setCotizacion(e.target.value)} disabled={moneda === 'ARS'} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 disabled:opacity-50" /></div>
+          <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">Moneda</label><select value={moneda} onChange={e => { const value=e.target.value; setMoneda(value); if(value===effectiveBaseCurrency)setCotizacion('1'); }} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">{currencies.map(c => <option key={c}>{c}</option>)}</select></div>
+          <div className="hidden space-y-1.5 sm:block"><label className="text-[11px] font-bold text-slate-500 uppercase">{quoteLabel}</label><input type="number" min="0.0001" step="any" value={cotizacion} onChange={e => setCotizacion(e.target.value)} disabled={moneda === effectiveBaseCurrency} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 disabled:opacity-50" /></div>
         </div>
 
         {/* Monto */}
