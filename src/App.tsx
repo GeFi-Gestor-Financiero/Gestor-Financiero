@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { User, deleteUser, onAuthStateChanged, sendPasswordResetEmail, signOut } from 'firebase/auth';
 import { addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, setDoc, updateDoc } from 'firebase/firestore';
 import { Download, Plus, ExternalLink, Link as LinkIcon, Trash2, X, Pencil } from 'lucide-react';
@@ -56,6 +56,7 @@ export default function App() {
  const [isPageReload]=useState(()=>{const navigation=performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming|undefined;return navigation?.type==='reload'});
  const [reloadDelayDone,setReloadDelayDone]=useState(()=>!isPageReload);
  const [user,setUser]=useState<User|null>(null), [loading,setLoading]=useState(true), [txs,setTxs]=useState<Transaction[]>([]), [accounts,setAccounts]=useState<Account[]>([]), [fixed,setFixed]=useState<FixedExpense[]>([]), [loans,setLoans]=useState<Loan[]>([]), [settings,setSettings]=useState<UserSettings>(defaults), [showSettings,setShowSettings]=useState(false);
+ const settingsHistoryRef=useRef(false);
  const [fixedFormOpen,setFixedFormOpen]=useState(false), [fixedDraft,setFixedDraft]=useState({nombre:'',monto:''}), [fixedFormError,setFixedFormError]=useState('');
  const [syncError,setSyncError]=useState('');
  const [isOnline,setIsOnline]=useState(()=>navigator.onLine);
@@ -65,6 +66,8 @@ export default function App() {
  const [currentHour,setCurrentHour]=useState(()=>new Date().getHours());
  const [quickLinkMenu,setQuickLinkMenu]=useState<{id:string;x:number;y:number}|null>(null), [quickLinkEdit,setQuickLinkEdit]=useState<{id:string;nombre:string;url:string}|null>(null), [quickLinkEditError,setQuickLinkEditError]=useState(''), [quickLinkDelete,setQuickLinkDelete]=useState<string|null>(null);
  const now=new Date(); const [month,setMonth]=useState(now.getMonth()), [year,setYear]=useState(now.getFullYear());
+ useEffect(()=>{if(showSettings&&!settingsHistoryRef.current){window.history.pushState({...window.history.state,gefiOverlay:'settings'},'');settingsHistoryRef.current=true;return}if(!showSettings&&settingsHistoryRef.current&&window.history.state?.gefiOverlay==='settings')window.history.back()},[showSettings]);
+ useEffect(()=>{const onPopState=(event:PopStateEvent)=>{const settingsState=event.state?.gefiOverlay==='settings';settingsHistoryRef.current=settingsState;setShowSettings(settingsState)};window.addEventListener('popstate',onPopState);return()=>window.removeEventListener('popstate',onPopState)},[]);
  useEffect(()=>onAuthStateChanged(auth,u=>{setUser(u);setLoading(false);if(!u){setTxs([]);setAccounts([]);setFixed([]);setLoans([]);setSettings(defaults);return}setTxs(readCache(userCacheKey(u.uid,'transactions'),[]));setAccounts(readCache(userCacheKey(u.uid,'accounts'),[]));setFixed(readCache(userCacheKey(u.uid,'fixedExpenses'),[]));setLoans(readCache(userCacheKey(u.uid,'loans'),[]));setSettings({...defaults,...readCache<Partial<UserSettings>>(userCacheKey(u.uid,'settings'),{})});setDoc(doc(db,'users',u.uid),{email:u.email||null,displayName:u.displayName||null,updatedAt:Date.now()},{merge:true});}),[]);
  useEffect(()=>{if(!isPageReload)return;const timer=window.setTimeout(()=>setReloadDelayDone(true),1000);return()=>window.clearTimeout(timer)},[isPageReload]);
  useEffect(()=>{ document.documentElement.classList.toggle('dark',settings.darkMode); },[settings.darkMode]);
