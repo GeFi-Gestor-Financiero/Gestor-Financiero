@@ -15,7 +15,16 @@ export default function TransactionList({ transactions, onDeleteTransaction, onE
   const format = (value: number, code = 'ARS') => new Intl.NumberFormat('es-AR', { style: 'currency', currency: code, maximumFractionDigits: 2 }).format(value);
   const isCorrection = (t: Transaction) => t.categoriaDetalle === 'Corrección de saldo' || /^Corrección de\s/i.test(t.motivo || '');
   const typeFor = (t: Transaction) => isCorrection(t) ? 'Corrección' : t.categoria;
-  const colorFor = (t: Transaction) => isCorrection(t) ? 'text-blue-600 dark:text-blue-400' : t.categoria === 'Ingreso' || t.categoria === 'Ef+' ? 'text-emerald-600' : t.categoria === 'Inversion' ? 'text-amber-600' : t.categoria === 'Ahorro' ? 'text-violet-600 dark:text-violet-400' : t.categoria === 'Transferencia' ? 'text-blue-600' : 'text-rose-600';
+  const colorFor = (t: Transaction) => {
+    if (isCorrection(t)) return 'text-blue-600 dark:text-blue-400';
+    if (t.categoria === 'Ingreso' || t.categoria === 'Ef+') return 'text-emerald-600 dark:text-emerald-400';
+    if (t.categoria === 'Inversion') return 'text-amber-700 dark:text-amber-300';
+    if (t.categoria === 'Ahorro') return 'text-violet-600 dark:text-violet-400';
+    if (t.categoria === 'Transferencia') return 'text-cyan-700 dark:text-cyan-300';
+    if (t.categoria === 'Gasto' || t.categoria === 'Gasto efectivo' || t.categoria === 'Ef-') return 'text-rose-600 dark:text-rose-400';
+    if (t.categoria === 'Prestamo') return 'text-blue-700 dark:text-blue-300';
+    return 'text-slate-600 dark:text-slate-300';
+  };
   const accountFor = (t: Transaction) => accounts.find(a => a.id === t.cuentaOrigen)?.nombre || accounts.find(a => a.id === t.cuentaDestino)?.nombre || 'Sin cuenta';
   const list = transactions.filter(t => (!search || `${t.motivo} ${t.categoriaDetalle || ''}`.toLowerCase().includes(search.toLowerCase())) && (!type || t.categoria === type) && (!currency || (t.moneda || 'ARS') === currency) && (!account || t.cuentaOrigen === account || t.cuentaDestino === account)).sort((a, b) => b.fecha.localeCompare(a.fecha) || b.createdAt - a.createdAt);
   const initialLimit = isMobile ? 4 : 10;

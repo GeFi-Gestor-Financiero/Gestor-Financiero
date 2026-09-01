@@ -74,6 +74,12 @@ section[role="dialog"], div[role="dialog"], div[role="alertdialog"] { border: 1p
 .gefi-kpi:hover { border-color: #a9bdd8 !important; box-shadow: 0 10px 24px rgb(30 64 175 / .08); transform: translateY(-1px); }
 .dark .gefi-kpi { border-color: #263247 !important; background: #111827 !important; }
 .dark .gefi-kpi:hover { border-color: #3b4b65 !important; box-shadow: 0 12px 28px rgb(0 0 0 / .20); }
+.gefi-kpi-transfer:hover { border-color: rgb(8 145 178 / .48) !important; box-shadow: 0 10px 24px rgb(8 145 178 / .10); }
+.gefi-kpi-investment { border-color: rgb(217 119 6 / .32) !important; background: linear-gradient(145deg, rgb(255 251 235 / .72), rgb(255 255 255 / .96) 62%) !important; }
+.gefi-kpi-investment:hover { border-color: rgb(217 119 6 / .54) !important; box-shadow: 0 10px 24px rgb(217 119 6 / .10); }
+.dark .gefi-kpi-transfer:hover { border-color: rgb(34 211 238 / .40) !important; }
+.dark .gefi-kpi-investment { border-color: rgb(180 83 9 / .52) !important; background: linear-gradient(145deg, rgb(69 26 3 / .24), #111827 62%) !important; }
+.dark .gefi-kpi-investment:hover { border-color: rgb(251 191 36 / .48) !important; }
 .dark .gefi-kpi .text-blue-700 { color: #93c5fd; }
 .dark .gefi-kpi .text-cyan-700 { color: #67e8f9; }
 .gefi-footer { background: rgb(255 255 255 / .80); }
