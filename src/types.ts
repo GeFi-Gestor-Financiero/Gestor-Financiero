@@ -16,6 +16,7 @@ export interface Transaction {
   deletedAt?: number;
   accountDelta?: number;
   balanceOrigin?: 'baseline' | 'new';
+  balanceTarget?: number;
 }
 
 export interface Account { id: string; nombre: string; tipo: 'Banco' | 'Billetera' | 'Efectivo'; moneda: string; saldoInicial: number; activa: boolean; }
