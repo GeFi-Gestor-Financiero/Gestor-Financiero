@@ -87,6 +87,7 @@ section[role="dialog"], div[role="dialog"], div[role="alertdialog"] { border: 1p
 .mobile-menu { display: none; }
 
 @media (max-width: 767px) {
+  .gefi-shell > footer { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
   .gefi-main { padding: 1rem 1rem calc(8rem + env(safe-area-inset-bottom)); }
   .gefi-header { position: relative; }
   .gefi-kpi { min-height: 102px; }

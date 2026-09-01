@@ -12,9 +12,10 @@ interface TransactionFormProps {
   preferredCurrency?: string;
   baseCurrency?: string;
   categories: string[];
+  investmentPlatforms?: string[];
 }
 
-export default function TransactionForm({ onAddTransaction, selectedMonth, selectedYear, accounts, currencies, preferredCurrency = currencies[0] || 'ARS', baseCurrency = currencies[0] || 'ARS', categories }: TransactionFormProps) {
+export default function TransactionForm({ onAddTransaction, selectedMonth, selectedYear, accounts, currencies, preferredCurrency = currencies[0] || 'ARS', baseCurrency = currencies[0] || 'ARS', categories, investmentPlatforms = [] }: TransactionFormProps) {
   // Set default date as current date formatted in selected month/year to prevent out of bounds
   const getInitialDateString = () => {
     const today = new Date();
@@ -51,6 +52,7 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
   }, [selectedMonth, selectedYear]);
   React.useEffect(() => { setEffectiveBaseCurrency(baseCurrency); setMoneda(preferredCurrency); setCotizacion(preferredCurrency === baseCurrency ? '1' : cotizacion); }, [preferredCurrency, baseCurrency]);
   React.useEffect(() => { const syncCurrency=(event:Event)=>{const currency=(event as CustomEvent<string>).detail;if(currency){setMoneda(currency);setEffectiveBaseCurrency(currency);setCotizacion('1');}};window.addEventListener('gefi:currency-preference',syncCurrency);return()=>window.removeEventListener('gefi:currency-preference',syncCurrency); }, []);
+  React.useEffect(() => { const options=categoria==='Inversion'&&investmentPlatforms.length?investmentPlatforms:categories;if(options.length&&!options.includes(categoriaDetalle))setCategoriaDetalle(options[0]); }, [categoria, categories, investmentPlatforms]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,7 +158,7 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
 
         <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">{categoria === 'Transferencia' ? 'Sale de' : 'Cuenta origen'}</label><select value={cuentaOrigen} onChange={e => setCuentaOrigen(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"><option value="">{categoria === 'Transferencia' ? 'Seleccionar' : 'Sin cuenta'}</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.nombre}{a.tipo === 'Efectivo' ? ' · Efectivo' : ''}</option>)}</select></div>
         <div className={`${showMoreMobile ? 'block' : 'hidden'} space-y-1.5 sm:block`}>
-          <label className="text-[11px] font-bold text-slate-500 uppercase">Categoría de detalle</label><select value={categoriaDetalle} onChange={e => setCategoriaDetalle(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">{categories.map(c => <option key={c}>{c}</option>)}</select>
+          <label className="text-[11px] font-bold text-slate-500 uppercase">{categoria === 'Inversion' ? 'Plataforma de inversión' : 'Categoría de detalle'}</label><select value={categoriaDetalle} onChange={e => setCategoriaDetalle(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">{(categoria === 'Inversion' && investmentPlatforms.length ? investmentPlatforms : categories).map(c => <option key={c}>{c}</option>)}</select>
         </div>
         {categoria === 'Transferencia' && <div className="space-y-1.5"><label className="text-[11px] font-bold text-slate-500 uppercase">Entra a</label><select value={cuentaDestino} onChange={e => setCuentaDestino(e.target.value)} className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"><option value="">Seleccionar</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.nombre}{a.tipo === 'Efectivo' ? ' · Efectivo' : ''}</option>)}</select><p className="text-[10px] text-slate-400">No modifica gastos, ingresos ni patrimonio.</p></div>}
 

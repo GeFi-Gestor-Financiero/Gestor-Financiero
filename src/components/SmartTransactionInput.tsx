@@ -4,7 +4,7 @@ import { Account, Transaction, TransactionType } from '../types';
 import { interpretTransaction } from '../services/aiTransaction';
 
 type Draft = Omit<Transaction, 'id' | 'createdAt' | 'uid'>;
-type Props = { accounts: Account[]; categories: string[]; currency?: string; language?: 'es'|'en'; onAddTransaction: (data: Draft) => Promise<void> };
+type Props = { accounts: Account[]; categories: string[]; investmentPlatforms?: string[]; currency?: string; language?: 'es'|'en'; onAddTransaction: (data: Draft) => Promise<void> };
 
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const localDate = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -119,7 +119,7 @@ function inferCategory(text: string, categories: string[]) {
   return categories.find(item => normalize(item) === normalize(wanted || '')) || categories.find(item => normalize(item) === 'general') || categories[0] || 'General';
 }
 
-export default function SmartTransactionInput({ accounts, categories, currency = 'ARS', language = 'es', onAddTransaction }: Props) {
+export default function SmartTransactionInput({ accounts, categories, investmentPlatforms = [], currency = 'ARS', language = 'es', onAddTransaction }: Props) {
   const [text, setText] = useState(''), [error, setError] = useState(''), [saving, setSaving] = useState(false),[listening,setListening]=useState(false);
   const currencyName=new Intl.NumberFormat(language==='en'?'en-US':'es-AR',{style:'currency',currency,currencyDisplay:'name'}).formatToParts(100).find(part=>part.type==='currency')?.value||currency;
   const example=language==='en'?`E.g.: today I spent 100 ${currencyName} at Walmart`:`Ej: hoy gasté 100 ${currencyName} en el supermercado`;
@@ -135,12 +135,14 @@ export default function SmartTransactionInput({ accounts, categories, currency =
         const parsed=await interpretTransaction(spokenText,categories,localDate());
         const mentionedAccount=accounts.find(account=>normalize(spokenText).includes(normalize(account.nombre)));
         const defaultAccount=parsed.efectivo?accounts.find(account=>account.tipo==='Efectivo'):accounts.find(account=>account.tipo!=='Efectivo');
-        movement={fecha:parsed.fecha,categoria:parsed.categoria,monto:parsed.monto,motivo:parsed.motivo,moneda:currency,cotizacion:1,categoriaDetalle:parsed.categoriaDetalle,cuentaOrigen:mentionedAccount?.id||defaultAccount?.id||''};
+        const platform=parsed.categoria==='Inversion'?investmentPlatforms.find(item=>normalize(spokenText).includes(normalize(item))):undefined;
+        movement={fecha:parsed.fecha,categoria:parsed.categoria,monto:parsed.monto,motivo:parsed.motivo,moneda:currency,cotizacion:1,categoriaDetalle:platform||parsed.categoriaDetalle,cuentaOrigen:mentionedAccount?.id||defaultAccount?.id||''};
       } catch { /* Cuando la IA no responde, se usa el análisis local. */ }
       if (!movement) {
         const monto=inferAmount(spokenText);if(!Number.isFinite(monto)||monto<=0)throw new Error('No pude reconocer el monto. Probá, por ejemplo: “hoy gasté 10 mil en Open25”.');
         const categoria=inferType(spokenText),cash=categoria==='Ef+'||categoria==='Ef-',mentionedAccount=accounts.find(account=>normalize(spokenText).includes(normalize(account.nombre))),defaultAccount=cash?accounts.find(account=>account.tipo==='Efectivo'):accounts.find(account=>account.tipo!=='Efectivo');
-        movement={fecha:inferDate(spokenText),categoria,monto,motivo:inferDetail(spokenText),moneda:currency,cotizacion:1,categoriaDetalle:inferCategory(spokenText,categories),cuentaOrigen:mentionedAccount?.id||defaultAccount?.id||''};
+        const platform=categoria==='Inversion'?investmentPlatforms.find(item=>normalize(spokenText).includes(normalize(item))):undefined;
+        movement={fecha:inferDate(spokenText),categoria,monto,motivo:inferDetail(spokenText),moneda:currency,cotizacion:1,categoriaDetalle:platform||inferCategory(spokenText,categories),cuentaOrigen:mentionedAccount?.id||defaultAccount?.id||''};
       }
       await onAddTransaction(movement); setText('');
     }
