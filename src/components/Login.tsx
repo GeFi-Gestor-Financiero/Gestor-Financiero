@@ -65,7 +65,7 @@ export default function Login({ onLoginSuccess, darkMode, onToggleDarkMode }: Lo
   };
 
   return (
-    <div id="login-container" className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative transition-colors duration-250">
+    <div id="login-container" className="gefi-login min-h-[100dvh] flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative transition-colors duration-250">
       <div className="absolute top-4 right-4">
         <button
           onClick={onToggleDarkMode}
@@ -102,7 +102,7 @@ export default function Login({ onLoginSuccess, darkMode, onToggleDarkMode }: Lo
         transition={{ duration: 0.5, delay: 0.05 }}
         className="mt-6 sm:mx-auto sm:w-full sm:max-w-md"
       >
-        <div className="bg-white dark:bg-slate-900 py-6 px-4 shadow-sm rounded-2xl sm:px-8 border border-slate-200 dark:border-slate-800 transition-colors duration-200">
+        <div className="gefi-auth-card bg-white dark:bg-slate-900 py-6 px-4 rounded-2xl sm:px-8 border border-slate-200 dark:border-slate-800 transition-colors duration-200">
           
           <div className="space-y-4">
             <div>

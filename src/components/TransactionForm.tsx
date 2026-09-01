@@ -83,7 +83,7 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
   };
 
   return (
-    <div id="add-transaction-form-card" className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm transition-colors duration-200">
+    <div id="add-transaction-form-card" className="gefi-panel bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm transition-colors duration-200">
       <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2">
         <Plus className="w-4 h-4 text-blue-500" />
         Nuevo Movimiento
