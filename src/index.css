@@ -212,3 +212,23 @@ section[role="dialog"], div[role="dialog"], div[role="alertdialog"] { border: 1p
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
 }
+
+/* Unified GeFi product language: desktop follows the current mobile app. */
+@media (min-width:768px){
+  body{background:#f2f2ee;color:#151719;font-family:"Manrope GEFI","Segoe UI Variable Text","Segoe UI",sans-serif}
+  .gefi-shell{background:#f2f2ee!important}
+  .dark body,.dark .gefi-shell{background:#0a0f15!important;color:#f3f5f7}
+  .gefi-header{border-bottom:1px solid #dedfdb;background:rgb(242 242 238 / .92);box-shadow:none}
+  .dark .gefi-header{border-color:#28313b;background:rgb(10 15 21 / .94);box-shadow:none}
+  .gefi-welcome{border:0;background:#3157d5;box-shadow:none}
+  .gefi-welcome::after{display:none}
+  .gefi-panel,.gefi-kpi,.gefi-main>section:not(.gefi-kpi-grid),.gefi-main>div.mt-6>section,.gefi-main>.grid section{border-color:#dedfdb!important;border-radius:14px!important;background:#fff!important;box-shadow:none!important}
+  .dark .gefi-panel,.dark .gefi-kpi,.dark .gefi-main>section:not(.gefi-kpi-grid),.dark .gefi-main>div.mt-6>section,.dark .gefi-main>.grid section{border-color:#28313b!important;background:#111821!important;box-shadow:none!important}
+  .gefi-smart-entry{border-color:#cbd5f5!important;background:#fff!important}
+  .dark .gefi-smart-entry{border-color:#334778!important;background:#111821!important}
+  .gefi-kpi-investment,.dark .gefi-kpi-investment{border-color:#dedfdb!important;background:inherit!important}
+  .gefi-kpi:hover{border-color:#3157d5!important;box-shadow:none!important;transform:translateY(-1px)}
+  .gefi-auth-card{border-color:#dedfdb!important;border-radius:16px!important;box-shadow:none!important}
+  .dark .gefi-auth-card{border-color:#28313b!important;box-shadow:none!important}
+  .gefi-login{background:#f2f2ee!important}.dark .gefi-login{background:#0a0f15!important}
+}

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowDownLeft, ArrowRight, ArrowUpRight, Bell, CalendarDays,
@@ -231,7 +231,17 @@ function ProfileScreen({ userName, userEmail, userPhotoURL, settings, accounts, 
 
 export default function MobileConcept(props: MobileConceptProps) {
   const [screen, setScreen] = useState<Screen>('home');
-  const navigate = (next: Screen) => { setScreen(next); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const screenRef=useRef<Screen>('home');
+  useEffect(()=>{screenRef.current=screen},[screen]);
+  useEffect(()=>{
+    const base={...(history.state||{}),gefiMobileBase:true};
+    history.replaceState(base,'');
+    history.pushState({...base,gefiMobileScreen:'home'},'');
+    const onPopState=()=>{if(screenRef.current!=='home'){screenRef.current='home';setScreen('home');window.scrollTo({top:0,behavior:'auto'})}};
+    window.addEventListener('popstate',onPopState);
+    return()=>window.removeEventListener('popstate',onPopState);
+  },[]);
+  const navigate = (next: Screen) => { screenRef.current=next;setScreen(next);if(next!=='home')history.replaceState({...history.state,gefiMobileScreen:next},'');window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const tabs = [
     ['home', Home, 'Inicio'], ['activity', CircleDollarSign, 'Actividad'],
     ['add', Plus, 'Agregar'], ['plan', CalendarDays, 'Plan'], ['profile', UserRound, 'Perfil'],
