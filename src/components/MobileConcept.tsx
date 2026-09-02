@@ -2,8 +2,9 @@ import { useState } from 'react';
 import {
   ArrowDownLeft, ArrowRight, ArrowUpRight, Bell, CalendarDays,
   ChevronRight, CircleDollarSign, Home, Landmark, LineChart,
-  Plus, Search, Settings, ShieldCheck, SlidersHorizontal, Target,
-  UserRound, WalletCards, Trash2, Pencil, Check, X,
+  Plus, Search, ShieldCheck, SlidersHorizontal, Target,
+  UserRound, WalletCards, Trash2, Check, X, Eye, EyeOff, Moon, Sun,
+  LogOut, Download, Globe2, CircleHelp, Mail,
 } from 'lucide-react';
 import { Account, Transaction, UserSettings } from '../types';
 
@@ -25,6 +26,7 @@ type MobileConceptProps = {
   onOpenFullApp: () => void;
   onSaveSettings: (settings: UserSettings) => Promise<void>;
   onExport: () => void;
+  onLogout: () => void;
 };
 
 function Topbar({ eyebrow, title }: { eyebrow: string; title: string }) {
@@ -46,12 +48,12 @@ function Movements({ transactions, accounts, currency, hidden, limit }: { transa
   </div>;
 }
 
-function HomeScreen({ navigate, userName, summary, transactions, accounts, settings }: { navigate: (screen: Screen) => void } & MobileConceptProps) {
+function HomeScreen({ navigate, userName, summary, transactions, accounts, settings, onSaveSettings }: { navigate: (screen: Screen) => void } & MobileConceptProps) {
   const nextPayment=[...(settings.paymentReminders||[])].filter(item=>item.estado==='Pendiente').sort((a,b)=>a.fecha.localeCompare(b.fecha))[0];
   return <main className="mc-screen">
     <Topbar eyebrow="RESUMEN FINANCIERO" title={`Hola, ${userName.split(' ')[0]}`}/>
     <section className="mc-balance">
-      <p>Patrimonio total</p><h2>{settings.hideBalances?'••••••':money(summary.patrimonio,settings.monedaBase)}</h2>
+      <div className="mc-balance-label"><p>Patrimonio total</p><button type="button" onClick={()=>void onSaveSettings({...settings,hideBalances:!settings.hideBalances})} aria-label={settings.hideBalances?'Mostrar importes':'Ocultar importes'}>{settings.hideBalances?<Eye size={19}/>:<EyeOff size={19}/>}</button></div><h2>{settings.hideBalances?'••••••':money(summary.patrimonio,settings.monedaBase)}</h2>
       <span>Datos sincronizados</span>
     </section>
 
@@ -151,21 +153,28 @@ function PlanScreen({ settings, summary, onOpenFullApp }: Pick<MobileConceptProp
   </main>;
 }
 
-function ProfileScreen({ userName, settings, accounts, onSaveSettings, onExport, onOpenFullApp }:Pick<MobileConceptProps,'userName'|'settings'|'accounts'|'onSaveSettings'|'onExport'|'onOpenFullApp'>) {
-  const [section,setSection]=useState<string|null>(null);
-  const rows = [
-    [UserRound, 'Perfil y seguridad', 'Datos personales y acceso'],
-    [WalletCards, 'Cuentas y efectivo', 'Organizá dónde está tu dinero'],
-    [SlidersHorizontal, 'Preferencias', 'Moneda, idioma y categorías'],
-    [ShieldCheck, 'Datos y respaldo', 'Exportación y privacidad'],
-    [Settings, 'Apariencia', 'Tema y accesibilidad'],
-  ] as const;
-  if(section)return <main className="mc-screen"><Topbar eyebrow="CONFIGURACIÓN" title={section}/><button className="mc-detail" onClick={()=>setSection(null)}>← Volver a Perfil</button><section className="mc-settings-list">{section==='Cuentas y efectivo'?accounts.map(account=><div key={account.id} className="mc-setting-read"><strong>{account.nombre}</strong><small>{account.tipo} · {account.moneda}</small></div>):section==='Preferencias'?<div className="mc-setting-read"><label>Moneda<select value={settings.monedaBase} onChange={event=>void onSaveSettings({...settings,monedaBase:event.target.value,monedas:[event.target.value,...settings.monedas.filter(item=>item!==event.target.value)]})}>{settings.monedas.map(item=><option key={item}>{item}</option>)}</select></label><label>Idioma<select value={settings.language||'es'} onChange={event=>void onSaveSettings({...settings,language:event.target.value as 'es'|'en'})}><option value="es">Español</option><option value="en">English</option></select></label></div>:section==='Apariencia'?<div className="mc-setting-read"><button className="mc-submit" onClick={()=>void onSaveSettings({...settings,darkMode:!settings.darkMode})}>{settings.darkMode?'Usar modo claro':'Usar modo oscuro'}</button><button className="mc-detail" onClick={()=>void onSaveSettings({...settings,hideBalances:!settings.hideBalances})}>{settings.hideBalances?'Mostrar montos':'Ocultar montos'}</button></div>:section==='Datos y respaldo'?<div className="mc-setting-read"><button className="mc-submit" onClick={onExport}>Descargar JSON</button><small>El respaldo contiene tus datos sincronizados actuales.</small></div>:<div className="mc-setting-read"><strong>{section}</strong><small>Tu sesión y datos permanecen protegidos por Firebase.</small></div>}</section></main>;
+function ProfileScreen({ userName, settings, accounts, onSaveSettings, onExport, onOpenFullApp, onLogout }:Pick<MobileConceptProps,'userName'|'settings'|'accounts'|'onSaveSettings'|'onExport'|'onOpenFullApp'|'onLogout'>) {
   return <main className="mc-screen">
-    <Topbar eyebrow="TU ESPACIO" title="Perfil"/>
-    <section className="mc-profile-card"><div>{userName.trim().charAt(0).toUpperCase()}</div><span><strong>{userName}</strong><small>Cuenta de GEFI</small></span><ChevronRight size={18}/></section>
-    <section className="mc-settings-list">{rows.map(([Icon,title,subtitle]) => <button key={title} onClick={()=>setSection(title)}><span><Icon size={19}/></span><div><strong>{title}</strong><small>{subtitle}</small></div><ChevronRight size={18}/></button>)}</section>
-    <button className="mc-full-settings" onClick={onOpenFullApp}>Abrir todas las opciones avanzadas</button>
+    <Topbar eyebrow="CUENTA Y PREFERENCIAS" title="Perfil"/>
+    <section className="mc-profile-card"><div>{userName.trim().charAt(0).toUpperCase()}</div><span><strong>{userName}</strong><small>Cuenta sincronizada con GEFI</small></span><ShieldCheck size={19}/></section>
+    <h3 className="mc-settings-heading">Privacidad y apariencia</h3>
+    <section className="mc-settings-modern">
+      <button onClick={()=>void onSaveSettings({...settings,hideBalances:!settings.hideBalances})}><span className="mc-setting-icon">{settings.hideBalances?<EyeOff size={18}/>:<Eye size={18}/>}</span><div><strong>Ocultar importes</strong><small>Censura los saldos en todas las pantallas</small></div><i className={settings.hideBalances?'on':''}><em/></i></button>
+      <button onClick={()=>void onSaveSettings({...settings,darkMode:!settings.darkMode})}><span className="mc-setting-icon">{settings.darkMode?<Moon size={18}/>:<Sun size={18}/>}</span><div><strong>Modo oscuro</strong><small>Reduce el brillo de la interfaz</small></div><i className={settings.darkMode?'on':''}><em/></i></button>
+    </section>
+    <h3 className="mc-settings-heading">Preferencias</h3>
+    <section className="mc-settings-modern mc-settings-selects">
+      <label><span className="mc-setting-icon"><Globe2 size={18}/></span><div><strong>Idioma</strong><small>Idioma de toda la aplicación</small></div><select value={settings.language||'es'} onChange={event=>void onSaveSettings({...settings,language:event.target.value as 'es'|'en'})}><option value="es">ES</option><option value="en">EN</option></select></label>
+      <label><span className="mc-setting-icon"><CircleDollarSign size={18}/></span><div><strong>Moneda principal</strong><small>Usada en resúmenes y movimientos</small></div><select value={settings.monedaBase} onChange={event=>void onSaveSettings({...settings,monedaBase:event.target.value,monedas:[event.target.value,...settings.monedas.filter(item=>item!==event.target.value)]})}>{settings.monedas.map(item=><option key={item}>{item}</option>)}</select></label>
+    </section>
+    <h3 className="mc-settings-heading">Tus datos</h3>
+    <section className="mc-settings-modern">
+      <button onClick={onOpenFullApp}><span className="mc-setting-icon"><WalletCards size={18}/></span><div><strong>Cuentas y configuración avanzada</strong><small>{accounts.length} {accounts.length===1?'cuenta configurada':'cuentas configuradas'}</small></div><ChevronRight size={18}/></button>
+      <button onClick={onExport}><span className="mc-setting-icon"><Download size={18}/></span><div><strong>Descargar respaldo</strong><small>Exportá todos tus datos en formato JSON</small></div><ChevronRight size={18}/></button>
+    </section>
+    <h3 className="mc-settings-heading">Ayuda</h3>
+    <section className="mc-settings-modern"><a href="mailto:gefisupport@gmail.com"><span className="mc-setting-icon"><Mail size={18}/></span><div><strong>Contactar a soporte</strong><small>gefisupport@gmail.com</small></div><ChevronRight size={18}/></a><button onClick={onOpenFullApp}><span className="mc-setting-icon"><CircleHelp size={18}/></span><div><strong>Ayuda y preguntas frecuentes</strong><small>Consultá las funciones de GEFI</small></div><ChevronRight size={18}/></button></section>
+    <button className="mc-logout" onClick={onLogout}><LogOut size={17}/>Cerrar sesión</button>
   </main>;
 }
 
