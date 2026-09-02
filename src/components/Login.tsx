@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { signInWithPopup, signInAnonymously, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithPopup, signInWithRedirect, signInAnonymously, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, provider } from '../firebase';
 import { LogIn, ShieldAlert, Sparkles, User, Wallet, Sun, Moon } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -8,9 +8,10 @@ interface LoginProps {
   onLoginSuccess: (accessToken?: string) => void;
   darkMode: boolean;
   onToggleDarkMode: () => void;
+  mobileConcept?: boolean;
 }
 
-export default function Login({ onLoginSuccess, darkMode, onToggleDarkMode }: LoginProps) {
+export default function Login({ onLoginSuccess, darkMode, onToggleDarkMode, mobileConcept = false }: LoginProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [email, setEmail] = useState('');
@@ -28,7 +29,11 @@ export default function Login({ onLoginSuccess, darkMode, onToggleDarkMode }: Lo
       onLoginSuccess(token);
     } catch (err: any) {
       console.error(err);
-      setError('Error al iniciar sesión con Google. Intenta de nuevo.');
+      if (err?.code === 'auth/popup-blocked' || err?.code === 'auth/cancelled-popup-request') {
+        await signInWithRedirect(auth, provider);
+        return;
+      }
+      setError(err?.code === 'auth/unauthorized-domain' ? 'Este dominio local no está autorizado. Abrí la prueba desde localhost.' : 'No pudimos iniciar sesión con Google. Volvé a intentarlo.');
       setLoading(false);
     }
   };
@@ -63,6 +68,30 @@ export default function Login({ onLoginSuccess, darkMode, onToggleDarkMode }: Lo
       setLoading(false);
     }
   };
+
+  if (mobileConcept) return <div className="mc-login">
+    <header><img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="GEFI"/><span>GEFI</span></header>
+    <main>
+      <p className="mc-login-kicker">TUS FINANZAS, EN ORDEN</p>
+      <h1>Tu dinero.<br/>Más claro.</h1>
+      <p className="mc-login-copy">Registrá, entendé y planificá cada movimiento desde un solo lugar.</p>
+      {error&&<div className="mc-login-error"><ShieldAlert size={17}/><span>{error}</span></div>}
+      <button className="mc-google-button" disabled={loading} onClick={handleGoogleLogin}>
+        {loading?<span className="mc-login-loader"/>:<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3Z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.5L15.4 17c-.9.6-2 .9-3.4.9a5.8 5.8 0 0 1-5.5-4H3.2v2.6A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.5 13.9a6 6 0 0 1 0-3.8V7.5H3.2a10 10 0 0 0 0 9l3.3-2.6Z"/><path fill="#EA4335" d="M12 6.1c1.5 0 2.8.5 3.8 1.5l2.9-2.8A9.7 9.7 0 0 0 3.2 7.5l3.3 2.6a5.8 5.8 0 0 1 5.5-4Z"/></svg>}
+        <span>{loading?'Abriendo Google…':'Continuar con Google'}</span>
+      </button>
+      <div className="mc-login-divider"><span>o usá tu correo</span></div>
+      <form onSubmit={handlePasswordLogin} className="mc-login-form">
+        <label>Correo electrónico<input type="email" value={email} onChange={event=>setEmail(event.target.value)} placeholder="nombre@correo.com" autoComplete="email"/></label>
+        <label>Contraseña<input type="password" value={password} onChange={event=>setPassword(event.target.value)} placeholder="Mínimo 6 caracteres" autoComplete={registering?'new-password':'current-password'}/></label>
+        <button disabled={loading}>{registering?'Crear cuenta':'Ingresar con correo'}</button>
+      </form>
+      <button className="mc-login-switch" type="button" onClick={()=>{setRegistering(!registering);setError(null)}}>{registering?'Ya tengo una cuenta':'Crear una cuenta'}</button>
+      <button className="mc-guest-button" type="button" disabled={loading} onClick={handleGuestLogin}><User size={16}/>Iniciar como invitado</button>
+    </main>
+    <footer><button onClick={()=>setInfo('privacy')}>Privacidad</button><span>·</span><a href="mailto:gefisupport@gmail.com">Soporte</a></footer>
+    {info&&<PublicInfoDialog type={info} onClose={()=>setInfo(null)}/>}
+  </div>;
 
   return (
     <div id="login-container" className="gefi-login min-h-[100dvh] flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative transition-colors duration-250">

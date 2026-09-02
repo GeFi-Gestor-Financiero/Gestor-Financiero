@@ -7,7 +7,7 @@ import ToastContainer from './components/ToastContainer'
 import AlertContainer from './components/AlertContainer'
 import AppErrorBoundary from './components/AppErrorBoundary'
 
-if ('serviceWorker' in navigator) {
+if ('serviceWorker' in navigator && window.location.hostname === 'gefi-gestor-financiero.github.io') {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => undefined)
   })

@@ -20,6 +20,7 @@ if (typeof window !== 'undefined' && window.location.hostname === 'gefi-gestor-f
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 provider.addScope("https://www.googleapis.com/auth/drive.file");
+provider.setCustomParameters({ prompt: "select_account" });
 
 // If firestoreDatabaseId is set and is not "(default)", we use it, otherwise use the specific database ID
 const dbId = (config as any).firestoreDatabaseId || "ai-studio-a94cc835-b2e3-4297-b9d5-2f6cdda80b7d";
