@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  ArrowLeft,
   ArrowDownLeft, ArrowRight, ArrowUpRight, Bell, CalendarDays,
   ChevronRight, CircleDollarSign, Home, Landmark, LineChart,
   Plus, Search, ShieldCheck, SlidersHorizontal, Target,
@@ -23,7 +24,8 @@ type MobileConceptProps = {
   onAddTransaction: (data: Omit<Transaction, 'id' | 'createdAt' | 'uid'>) => Promise<void>;
   onDeleteTransaction: (id: string) => Promise<void>;
   onEditTransaction: (transaction: Transaction) => Promise<void>;
-  onOpenFullApp: () => void;
+  onAddAccount: (data: { nombre: string; tipo: Account['tipo']; saldoInicial: number }) => Promise<void>;
+  onDeleteAccount: (id: string) => Promise<void>;
   onSaveSettings: (settings: UserSettings) => Promise<void>;
   onExport: () => void;
   onLogout: () => void;
@@ -50,8 +52,10 @@ function Movements({ transactions, accounts, currency, hidden, limit }: { transa
 
 function HomeScreen({ navigate, userName, summary, transactions, accounts, settings, onSaveSettings }: { navigate: (screen: Screen) => void } & MobileConceptProps) {
   const nextPayment=[...(settings.paymentReminders||[])].filter(item=>item.estado==='Pendiente').sort((a,b)=>a.fecha.localeCompare(b.fecha))[0];
+  const hour=new Date().getHours();
+  const greeting=hour>=5&&hour<12?'Buenos días':hour>=12&&hour<20?'Buenas tardes':'Buenas noches';
   return <main className="mc-screen">
-    <Topbar eyebrow="RESUMEN FINANCIERO" title={`Hola, ${userName.split(' ')[0]}`}/>
+    <Topbar eyebrow="RESUMEN FINANCIERO" title={`${greeting}, ${userName.split(' ')[0]}`}/>
     <section className="mc-balance">
       <div className="mc-balance-label"><p>Patrimonio total</p><button type="button" onClick={()=>void onSaveSettings({...settings,hideBalances:!settings.hideBalances})} aria-label={settings.hideBalances?'Mostrar importes':'Ocultar importes'}>{settings.hideBalances?<Eye size={19}/>:<EyeOff size={19}/>}</button></div><h2>{settings.hideBalances?'••••••':money(summary.patrimonio,settings.monedaBase)}</h2>
       <span>Datos sincronizados</span>
@@ -117,11 +121,12 @@ function AddScreen({ accounts, settings, onAddTransaction }: Pick<MobileConceptP
   const [error,setError]=useState('');
   const [saved,setSaved]=useState(false);
   const addDigit = (digit: string) => setAmount(current => digit===','?(current.includes(',')?current:`${current},`):(current === '0' ? digit : `${current}${digit}`));
+  const formattedAmount=(()=>{const [integer,decimal]=amount.split(',');const grouped=(integer||'0').replace(/\B(?=(\d{3})+(?!\d))/g,'.');return decimal===undefined?grouped:`${grouped},${decimal}`})();
   const save=async()=>{const monto=Number(amount.replace(',','.'));if(!Number.isFinite(monto)||monto<=0){setError('Ingresá un importe mayor a cero.');return}if(type==='Transferencia'&&(!accountId||!destinationId||accountId===destinationId)){setError('Elegí cuentas distintas para transferir.');return}setSaving(true);setError('');try{await onAddTransaction({fecha:date,categoria:type==='Inversión'?'Inversion':type as Transaction['categoria'],monto,moneda:settings.monedaBase,cotizacion:1,motivo:detail.trim()||(type==='Transferencia'?'Transferencia interna':''),categoriaDetalle:type==='Transferencia'?'Transferencia interna':type==='Inversión'?'Inversión':category,cuentaOrigen:accountId,...(type==='Transferencia'?{cuentaDestino:destinationId}:{})});setAmount('0');setDetail('');setSaved(true);window.setTimeout(()=>setSaved(false),2500)}catch(reason){setError(reason instanceof Error?reason.message:'No se pudo guardar el movimiento.')}finally{setSaving(false)}};
   return <main className="mc-screen mc-add-screen">
     <Topbar eyebrow="NUEVO MOVIMIENTO" title="Registrar"/>
     <div className="mc-segmented">{['Gasto', 'Ingreso', 'Inversión', 'Transferencia'].map(item => <button key={item} onClick={() => setType(item)} className={type === item ? 'active' : ''}>{item}</button>)}</div>
-    <section className="mc-amount"><small>IMPORTE</small><div><span>{settings.monedaBase}</span><strong>{amount}</strong></div><p>Se sincronizará con tu cuenta</p></section>
+    <section className="mc-amount"><small>IMPORTE</small><div><span>{settings.monedaBase}</span><strong>{formattedAmount}</strong></div><p>Se sincronizará con tu cuenta</p></section>
     <div className="mc-fields"><label><small>{type==='Transferencia'?'SALE DE':'CUENTA'}</small><select value={accountId} onChange={event=>setAccountId(event.target.value)}><option value="">Sin cuenta</option>{accounts.map(account=><option key={account.id} value={account.id}>{account.nombre}</option>)}</select></label>{type==='Transferencia'?<label><small>ENTRA A</small><select value={destinationId} onChange={event=>setDestinationId(event.target.value)}><option value="">Elegir</option>{accounts.filter(account=>account.id!==accountId).map(account=><option key={account.id} value={account.id}>{account.nombre}</option>)}</select></label>:<label><small>CATEGORÍA</small><select value={category} onChange={event=>setCategory(event.target.value)}>{settings.categorias.map(item=><option key={item}>{item}</option>)}</select></label>}</div>
     <label className="mc-date-field"><small>FECHA</small><input type="date" value={date} onChange={event=>setDate(event.target.value)}/></label>
     <div className="mc-keypad">
@@ -132,7 +137,7 @@ function AddScreen({ accounts, settings, onAddTransaction }: Pick<MobileConceptP
   </main>;
 }
 
-function PlanScreen({ settings, summary, onOpenFullApp }: Pick<MobileConceptProps,'settings'|'summary'|'onOpenFullApp'>) {
+function PlanScreen({ settings, summary }: Pick<MobileConceptProps,'settings'|'summary'>) {
   const budget=Object.values(settings.budgets||{}).reduce((sum,value)=>sum+value,0);
   const progress=budget?Math.min(100,(summary.expense/budget)*100):0;
   return <main className="mc-screen">
@@ -148,12 +153,37 @@ function PlanScreen({ settings, summary, onOpenFullApp }: Pick<MobileConceptProp
     <section className="mc-section">
       <div className="mc-section-title"><h3>Próximos pagos</h3><button>Calendario</button></div>
       {(settings.paymentReminders||[]).length?(settings.paymentReminders||[]).slice(0,3).map(item=><div key={item.id} className="mc-due"><time><b>{item.fecha.slice(-2)}</b><small>{item.fecha.slice(5,7)}</small></time><div><strong>{item.nombre}</strong><small>{item.estado}</small></div><b>{item.monto?money(item.monto,item.moneda):''}</b></div>):<p className="mc-empty-state">No hay pagos próximos.</p>}
-      <button className="mc-detail" onClick={onOpenFullApp}>Gestionar presupuestos, metas y pagos</button>
     </section>
   </main>;
 }
 
-function ProfileScreen({ userName, settings, accounts, onSaveSettings, onExport, onOpenFullApp, onLogout }:Pick<MobileConceptProps,'userName'|'settings'|'accounts'|'onSaveSettings'|'onExport'|'onOpenFullApp'|'onLogout'>) {
+function ProfileScreen({ userName, settings, accounts, onSaveSettings, onExport, onLogout, onAddAccount, onDeleteAccount }:Pick<MobileConceptProps,'userName'|'settings'|'accounts'|'onSaveSettings'|'onExport'|'onLogout'|'onAddAccount'|'onDeleteAccount'>) {
+  const [panel,setPanel]=useState<'accounts'|'help'|null>(null);
+  const [showAccountForm,setShowAccountForm]=useState(false);
+  const [accountDraft,setAccountDraft]=useState<{nombre:string;tipo:Account['tipo'];saldoInicial:string}>({nombre:'',tipo:'Banco',saldoInicial:'0'});
+  const [deleteTarget,setDeleteTarget]=useState<Account|null>(null);
+  const [newCategory,setNewCategory]=useState('');
+  const [newPlatform,setNewPlatform]=useState('');
+  const addCategory=()=>{const value=newCategory.trim();if(!value||settings.categorias.some(item=>item.toLowerCase()===value.toLowerCase()))return;void onSaveSettings({...settings,categorias:[...settings.categorias,value]});setNewCategory('')};
+  const addPlatform=()=>{const value=newPlatform.trim();const current=settings.investmentPlatforms||[];if(!value||current.some(item=>item.toLowerCase()===value.toLowerCase()))return;void onSaveSettings({...settings,investmentPlatforms:[...current,value]});setNewPlatform('')};
+
+  if(panel==='accounts')return <main className="mc-screen mc-subpage">
+    <header className="mc-subpage-head"><button onClick={()=>setPanel(null)} aria-label="Volver"><ArrowLeft size={20}/></button><div><p>CONFIGURACIÓN</p><h1>Cuentas y organización</h1></div></header>
+    <section className="mc-section"><div className="mc-section-title"><h3>Tus cuentas</h3><button onClick={()=>setShowAccountForm(value=>!value)}>{showAccountForm?'Cancelar':'Agregar'}</button></div>
+      {showAccountForm&&<form className="mc-inline-form" onSubmit={async event=>{event.preventDefault();if(!accountDraft.nombre.trim())return;await onAddAccount({nombre:accountDraft.nombre.trim(),tipo:accountDraft.tipo,saldoInicial:Number(accountDraft.saldoInicial.replace(',','.'))||0});setAccountDraft({nombre:'',tipo:'Banco',saldoInicial:'0'});setShowAccountForm(false)}}><label>Nombre<input value={accountDraft.nombre} onChange={event=>setAccountDraft({...accountDraft,nombre:event.target.value})} placeholder="Ej. Cuenta principal" required/></label><div><label>Tipo<select value={accountDraft.tipo} onChange={event=>setAccountDraft({...accountDraft,tipo:event.target.value as Account['tipo']})}><option>Banco</option><option>Billetera</option><option>Efectivo</option></select></label><label>Saldo inicial<input inputMode="decimal" value={accountDraft.saldoInicial} onChange={event=>setAccountDraft({...accountDraft,saldoInicial:event.target.value})}/></label></div><button className="mc-submit">Guardar cuenta</button></form>}
+      <div className="mc-config-list">{accounts.map(account=><article key={account.id}><span className="mc-setting-icon"><Landmark size={18}/></span><div><strong>{account.nombre}</strong><small>{account.tipo} · {account.moneda}</small></div><button onClick={()=>setDeleteTarget(account)} aria-label={`Eliminar ${account.nombre}`}><Trash2 size={17}/></button></article>)}</div>
+    </section>
+    <section className="mc-section"><div className="mc-section-title"><h3>Categorías</h3></div><div className="mc-tag-editor"><div>{settings.categorias.map(category=><span key={category}>{category}<button onClick={()=>void onSaveSettings({...settings,categorias:settings.categorias.filter(item=>item!==category)})}><X size={13}/></button></span>)}</div><form onSubmit={event=>{event.preventDefault();addCategory()}}><input value={newCategory} onChange={event=>setNewCategory(event.target.value)} placeholder="Nueva categoría"/><button>Agregar</button></form></div></section>
+    <section className="mc-section"><div className="mc-section-title"><h3>Plataformas de inversión</h3></div><div className="mc-tag-editor"><div>{(settings.investmentPlatforms||[]).map(platform=><span key={platform}>{platform}<button onClick={()=>void onSaveSettings({...settings,investmentPlatforms:(settings.investmentPlatforms||[]).filter(item=>item!==platform)})}><X size={13}/></button></span>)}</div><form onSubmit={event=>{event.preventDefault();addPlatform()}}><input value={newPlatform} onChange={event=>setNewPlatform(event.target.value)} placeholder="Ej. Binance"/><button>Agregar</button></form></div></section>
+    {deleteTarget&&<div className="mc-sheet-backdrop"><div className="mc-confirm"><span><Trash2 size={20}/></span><h3>Eliminar cuenta</h3><p>Se eliminará {deleteTarget.nombre}. Tus movimientos existentes no se borrarán.</p><button className="mc-submit" onClick={async()=>{await onDeleteAccount(deleteTarget.id);setDeleteTarget(null)}}>Eliminar cuenta</button><button className="mc-detail" onClick={()=>setDeleteTarget(null)}>Cancelar</button></div></div>}
+  </main>;
+
+  if(panel==='help')return <main className="mc-screen mc-subpage">
+    <header className="mc-subpage-head"><button onClick={()=>setPanel(null)} aria-label="Volver"><ArrowLeft size={20}/></button><div><p>AYUDA</p><h1>Preguntas frecuentes</h1></div></header>
+    <section className="mc-faq"><details><summary>¿Cómo registro un movimiento?</summary><p>Abrí Registrar, elegí el tipo, escribí el importe y seleccioná la cuenta. El detalle es opcional.</p></details><details><summary>¿Cómo transfiero dinero entre cuentas?</summary><p>Elegí Transferencia al registrar. El dinero cambia de cuenta sin contarse como gasto ni ingreso.</p></details><details><summary>¿Puedo corregir un movimiento?</summary><p>Sí. Entrá en Actividad, tocá el movimiento y editá su fecha, importe o detalle.</p></details><details><summary>¿Qué pasa con un movimiento eliminado?</summary><p>Permanece en la papelera durante 30 días para que puedas recuperarlo.</p></details><details><summary>¿GEFI funciona sin conexión?</summary><p>La app puede abrirse y registrar datos sin conexión. La sincronización se completa cuando vuelve internet.</p></details></section>
+    <a className="mc-support-card" href="mailto:gefisupport@gmail.com"><span className="mc-setting-icon"><Mail size={18}/></span><div><strong>Contactar a soporte</strong><small>gefisupport@gmail.com</small></div><ChevronRight size={18}/></a>
+  </main>;
+
   return <main className="mc-screen">
     <Topbar eyebrow="CUENTA Y PREFERENCIAS" title="Perfil"/>
     <section className="mc-profile-card"><div>{userName.trim().charAt(0).toUpperCase()}</div><span><strong>{userName}</strong><small>Cuenta sincronizada con GEFI</small></span><ShieldCheck size={19}/></section>
@@ -169,11 +199,11 @@ function ProfileScreen({ userName, settings, accounts, onSaveSettings, onExport,
     </section>
     <h3 className="mc-settings-heading">Tus datos</h3>
     <section className="mc-settings-modern">
-      <button onClick={onOpenFullApp}><span className="mc-setting-icon"><WalletCards size={18}/></span><div><strong>Cuentas y configuración avanzada</strong><small>{accounts.length} {accounts.length===1?'cuenta configurada':'cuentas configuradas'}</small></div><ChevronRight size={18}/></button>
+      <button onClick={()=>setPanel('accounts')}><span className="mc-setting-icon"><WalletCards size={18}/></span><div><strong>Cuentas y configuración avanzada</strong><small>{accounts.length} {accounts.length===1?'cuenta configurada':'cuentas configuradas'}</small></div><ChevronRight size={18}/></button>
       <button onClick={onExport}><span className="mc-setting-icon"><Download size={18}/></span><div><strong>Descargar respaldo</strong><small>Exportá todos tus datos en formato JSON</small></div><ChevronRight size={18}/></button>
     </section>
     <h3 className="mc-settings-heading">Ayuda</h3>
-    <section className="mc-settings-modern"><a href="mailto:gefisupport@gmail.com"><span className="mc-setting-icon"><Mail size={18}/></span><div><strong>Contactar a soporte</strong><small>gefisupport@gmail.com</small></div><ChevronRight size={18}/></a><button onClick={onOpenFullApp}><span className="mc-setting-icon"><CircleHelp size={18}/></span><div><strong>Ayuda y preguntas frecuentes</strong><small>Consultá las funciones de GEFI</small></div><ChevronRight size={18}/></button></section>
+    <section className="mc-settings-modern"><a href="mailto:gefisupport@gmail.com"><span className="mc-setting-icon"><Mail size={18}/></span><div><strong>Contactar a soporte</strong><small>gefisupport@gmail.com</small></div><ChevronRight size={18}/></a><button onClick={()=>setPanel('help')}><span className="mc-setting-icon"><CircleHelp size={18}/></span><div><strong>Ayuda y preguntas frecuentes</strong><small>Consultá las funciones de GEFI</small></div><ChevronRight size={18}/></button></section>
     <button className="mc-logout" onClick={onLogout}><LogOut size={17}/>Cerrar sesión</button>
   </main>;
 }
