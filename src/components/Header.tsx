@@ -59,26 +59,26 @@ export default function Header({
   id="app-header"
   className="gefi-header border-b border-slate-200 dark:border-slate-800 transition-colors duration-200"
 >
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div className="gefi-header-inner max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3">
+        <div className="gefi-header-layout flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           
           {/* Logo & Info */}
-          <div className="flex items-center gap-2.5 min-w-0">
+          <div className="gefi-header-brand flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm">
               <TrendingUp className="w-4 h-4" />
             </div>
             <div className="min-w-0">
               <h1 className="text-base font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
-                Mi Gestor Financiero
+                <span className="sm:hidden">GeFi</span><span className="hidden sm:inline">Mi Gestor Financiero</span>
               </h1>
               <p className="text-[10px] text-slate-400 dark:text-slate-500 font-sans truncate">
-                Control personal de ingresos, gastos y efectivo
+                <span className="sm:hidden">Control financiero personal</span><span className="hidden sm:inline">Control personal de ingresos, gastos y efectivo</span>
               </p>
             </div>
           </div>
 
           {/* Month / Year Selector */}
-          <div className="flex w-full md:w-auto items-center justify-between md:justify-center gap-1.5 bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 transition-colors duration-200">
+          <div className="gefi-header-period flex w-full md:w-auto items-center justify-between md:justify-center gap-1.5 bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 transition-colors duration-200">
             <button
               onClick={handlePrevMonth}
               className="p-1.5 hover:bg-white dark:hover:bg-slate-900 rounded-lg transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white shadow-3xs dark:shadow-none"
@@ -122,8 +122,8 @@ export default function Header({
 
           {/* User profile / Logout */}
           {user && (
-            <div className="flex items-center justify-between md:justify-end gap-2 sm:gap-3 border-t md:border-t-0 pt-2.5 md:pt-0 border-slate-100 dark:border-slate-800 min-w-0">
-              <button type="button" onClick={onOpenAccount} title="Cuenta" className="flex items-center gap-2 min-w-0 rounded-lg text-left hover:bg-slate-50 dark:hover:bg-slate-800 p-1 transition">
+            <div className="gefi-header-account flex items-center justify-between md:justify-end gap-2 sm:gap-3 border-t md:border-t-0 pt-2.5 md:pt-0 border-slate-100 dark:border-slate-800 min-w-0">
+              <button type="button" onClick={onOpenAccount} title="Cuenta" className="gefi-account-button flex items-center gap-2 min-w-0 rounded-lg text-left hover:bg-slate-50 dark:hover:bg-slate-800 p-1 transition">
                 {user.photoURL ? (
                   <img
                     src={user.photoURL}
@@ -146,7 +146,7 @@ export default function Header({
                 </div>
               </button>
 
-              <div className="flex shrink-0 items-center gap-1">
+              <div className="gefi-header-actions flex shrink-0 items-center gap-1">
                 {/* Mostrar/Ocultar montos */}
                 <button
                   onClick={onToggleHideBalances}

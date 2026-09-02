@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChartNoAxesCombined, List, Plus, Settings } from 'lucide-react';
+import { History, Home, Plus, Settings } from 'lucide-react';
 
 type SectionId = 'summary' | 'add-transaction-form-card' | 'movements-history';
 type Props = { language?: 'es' | 'en'; settingsOpen: boolean; onOpenSettings: () => void };
@@ -8,9 +8,9 @@ export default function MobileNavigation({ language = 'es', settingsOpen, onOpen
   const [active, setActive] = useState<SectionId | 'settings'>('summary');
   const english = language === 'en';
   const items = [
-    { id: 'summary' as const, label: english ? 'Summary' : 'Resumen', icon: ChartNoAxesCombined },
+    { id: 'summary' as const, label: english ? 'Summary' : 'Resumen', icon: Home },
     { id: 'add-transaction-form-card' as const, label: english ? 'New' : 'Nuevo', icon: Plus },
-    { id: 'movements-history' as const, label: english ? 'History' : 'Historial', icon: List },
+    { id: 'movements-history' as const, label: english ? 'History' : 'Historial', icon: History },
   ];
 
   useEffect(() => {
@@ -34,6 +34,6 @@ export default function MobileNavigation({ language = 'es', settingsOpen, onOpen
 
   return <nav className="mobile-menu" aria-label={english ? 'Main navigation' : 'Navegación principal'}>
     {items.map(item => { const Icon = item.icon; return <button key={item.id} type="button" onClick={() => goTo(item.id)} className={`mobile-menu-item ${active === item.id ? 'active' : ''}`} aria-current={active === item.id ? 'page' : undefined}><Icon aria-hidden="true"/><span>{item.label}</span></button>; })}
-    <button type="button" onClick={() => { setActive('settings'); onOpenSettings(); }} className={`mobile-menu-item ${active === 'settings' ? 'active' : ''}`} aria-current={active === 'settings' ? 'page' : undefined}><Settings aria-hidden="true"/><span>{english ? 'Settings' : 'Configuración'}</span></button>
+    <button type="button" onClick={() => { setActive('settings'); onOpenSettings(); }} className={`mobile-menu-item ${active === 'settings' ? 'active' : ''}`} aria-current={active === 'settings' ? 'page' : undefined}><Settings aria-hidden="true"/><span>{english ? 'Settings' : 'Ajustes'}</span></button>
   </nav>;
 }

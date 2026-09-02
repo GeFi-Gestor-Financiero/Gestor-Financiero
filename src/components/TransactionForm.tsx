@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
+import { ArrowRight, CalendarDays, ChevronDown, ChevronUp, Delete, Plus, Tag, WalletCards } from 'lucide-react';
 import { Account, Transaction, TransactionType } from '../types';
 import { motion } from 'motion/react';
 
@@ -45,6 +45,13 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
   const [error, setError] = useState<string | null>(null);
   const [showMoreMobile, setShowMoreMobile] = useState(false);
   const quoteLabel = typeof document !== 'undefined' && document.documentElement.lang === 'en' ? `Exchange rate to ${effectiveBaseCurrency}` : `Cotización a ${effectiveBaseCurrency}`;
+  const keypad = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0'];
+  const appendAmount = (key: string) => setMonto(current => {
+    if (key === '.' && current.includes('.')) return current;
+    if (current.replace('.', '').length >= 10) return current;
+    if (current === '0' && key !== '.') return key;
+    return `${current}${key}`;
+  });
 
   // Sync date input if user shifts selected month/year and current date is no longer in range
   React.useEffect(() => {
@@ -86,6 +93,54 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
 
   return (
     <div id="add-transaction-form-card" className="gefi-panel bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm transition-colors duration-200">
+      <form onSubmit={handleSubmit} className="mobile-quick-entry -m-4 overflow-hidden rounded-2xl border border-slate-800 bg-[#070a10] text-slate-100 sm:hidden">
+        <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
+          <div>
+            <h3 className="text-sm font-semibold tracking-tight text-white">Registrar movimiento</h3>
+            <p className="mt-1 text-[11px] text-slate-500">Carga manual</p>
+          </div>
+          <select value={moneda} onChange={e=>setMoneda(e.target.value)} aria-label="Moneda" className="min-h-9 rounded-lg border border-slate-700 bg-[#0d121c] px-3 text-xs font-semibold text-slate-200 outline-none focus:border-blue-500">
+            {currencies.map(currency=><option key={currency} className="bg-slate-900">{currency}</option>)}
+          </select>
+        </div>
+
+        <div className="px-5 pb-5 pt-4">
+          <div className="grid grid-cols-2 border-b border-slate-800">
+            <button type="button" onClick={()=>setCategoria('Ingreso')} className={`min-h-10 border-b-2 text-xs font-semibold transition-colors ${categoria==='Ingreso'?'border-blue-500 text-white':'border-transparent text-slate-500 hover:text-slate-300'}`}>Ingreso</button>
+            <button type="button" onClick={()=>setCategoria('Gasto')} className={`min-h-10 border-b-2 text-xs font-semibold transition-colors ${categoria==='Gasto'?'border-blue-500 text-white':'border-transparent text-slate-500 hover:text-slate-300'}`}>Gasto</button>
+          </div>
+
+          <div className="py-7">
+            <label htmlFor="mobile-amount" className="text-[11px] font-medium text-slate-500">Importe</label>
+            <div className="mt-2 flex items-baseline gap-3 text-white">
+              <span className="font-mono text-sm font-medium text-blue-400">{moneda}</span>
+              <input id="mobile-amount" value={monto} onChange={e=>setMonto(e.target.value)} inputMode="decimal" placeholder="0" aria-label="Importe" className="min-h-0 w-full border-0 bg-transparent p-0 font-mono text-5xl font-medium tracking-[-0.06em] text-white outline-none placeholder:text-slate-700" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 divide-x divide-slate-800 border-y border-slate-800">
+            <label className="flex min-w-0 cursor-pointer flex-col gap-1 px-3 py-3 text-[10px] font-medium text-slate-500 active:bg-slate-900"><CalendarDays className="h-4 w-4 text-blue-400"/><span className="max-w-full truncate text-slate-300">{new Date(`${fecha}T12:00:00`).toLocaleDateString('es-AR',{day:'2-digit',month:'short'})}</span><input type="date" value={fecha} onChange={e=>setFecha(e.target.value)} className="sr-only"/></label>
+            <label className="flex min-w-0 cursor-pointer flex-col gap-1 px-3 py-3 text-[10px] font-medium text-slate-500 active:bg-slate-900"><Tag className="h-4 w-4 text-blue-400"/><select aria-label="Tipo de movimiento" value={categoria} onChange={e=>setCategoria(e.target.value as TransactionType)} className="min-h-0 max-w-full border-0 bg-transparent p-0 text-[10px] text-slate-300 outline-none"><option className="bg-slate-900" value="Ingreso">Ingreso</option><option className="bg-slate-900" value="Gasto">Gasto</option><option className="bg-slate-900" value="Inversion">Inversión</option><option className="bg-slate-900" value="Ahorro">Ahorro</option><option className="bg-slate-900" value="Transferencia">Transferencia</option><option className="bg-slate-900" value="Prestamo">Préstamo</option></select></label>
+            <label className="flex min-w-0 cursor-pointer flex-col gap-1 px-3 py-3 text-[10px] font-medium text-slate-500 active:bg-slate-900"><WalletCards className="h-4 w-4 text-blue-400"/><select aria-label="Cuenta de origen" value={cuentaOrigen} onChange={e=>setCuentaOrigen(e.target.value)} className="min-h-0 max-w-full border-0 bg-transparent p-0 text-[10px] text-slate-300 outline-none"><option className="bg-slate-900" value="">Sin cuenta</option>{accounts.map(account=><option className="bg-slate-900" key={account.id} value={account.id}>{account.nombre}</option>)}</select></label>
+          </div>
+          <label className="flex min-h-11 items-center justify-between gap-3 border-b border-slate-800 px-1 text-[10px] font-medium text-slate-500"><span>{categoria==='Transferencia'?'Cuenta destino':categoria==='Inversion'?'Plataforma':'Categoría'}</span>{categoria==='Transferencia'?<select aria-label="Cuenta de destino" value={cuentaDestino} onChange={e=>setCuentaDestino(e.target.value)} className="min-h-0 max-w-[65%] border-0 bg-transparent p-0 text-right text-[10px] text-slate-300 outline-none"><option className="bg-slate-900" value="">Seleccionar</option>{accounts.map(account=><option className="bg-slate-900" key={account.id} value={account.id}>{account.nombre}</option>)}</select>:<select aria-label={categoria==='Inversion'?'Plataforma de inversión':'Categoría de detalle'} value={categoriaDetalle} onChange={e=>setCategoriaDetalle(e.target.value)} className="min-h-0 max-w-[65%] border-0 bg-transparent p-0 text-right text-[10px] text-slate-300 outline-none">{(categoria==='Inversion'&&investmentPlatforms.length?investmentPlatforms:categories).map(option=><option className="bg-slate-900" key={option}>{option}</option>)}</select>}</label>
+
+          <div className="mx-auto mt-5 grid max-w-xs grid-cols-3 gap-x-3 gap-y-2">
+            {keypad.map(key=><button key={key} type="button" onClick={()=>appendAmount(key)} className="grid min-h-11 place-items-center rounded-lg border border-slate-800 bg-[#0c111a] text-lg font-medium text-slate-200 hover:border-slate-700 hover:bg-[#111827] active:scale-[0.98]">{key}</button>)}
+            <button type="button" aria-label="Borrar último número" onClick={()=>setMonto(current=>current.slice(0,-1))} className="grid min-h-11 place-items-center rounded-lg border border-slate-800 bg-transparent text-slate-500 hover:border-blue-800 hover:text-blue-400 active:scale-[0.98]"><Delete className="h-5 w-5"/></button>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            <input value={motivo} onChange={e=>setMotivo(e.target.value)} placeholder="Detalle opcional" maxLength={100} className="w-full rounded-lg border border-slate-800 bg-[#0c111a] px-3 py-3 text-xs text-slate-100 outline-none placeholder:text-slate-600 focus:border-blue-500"/>
+            {error&&<p role="alert" className="border-l-2 border-rose-500 bg-rose-950/20 px-3 py-2 text-xs text-rose-300">{error}</p>}
+            <button type="submit" disabled={loading} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.18)] hover:bg-blue-500 active:scale-[0.99] disabled:opacity-60">
+              <span>{loading?'Guardando…':'Registrar movimiento'}</span><ArrowRight className="h-4 w-4"/>
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <div className="hidden sm:block">
       <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2">
         <Plus className="w-4 h-4 text-blue-500" />
         Nuevo Movimiento
@@ -193,6 +248,7 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
           )}
         </button>
       </form>
+      </div>
     </div>
   );
 }
