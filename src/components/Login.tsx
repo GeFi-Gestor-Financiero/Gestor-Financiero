@@ -70,7 +70,7 @@ export default function Login({ onLoginSuccess, darkMode, onToggleDarkMode, mobi
   };
 
   if (mobileConcept) return <div className="mc-login">
-    <header><img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="GEFI"/><span>GEFI</span></header>
+    <header><div className="mc-login-brand"><img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="GEFI"/><span>GEFI</span></div><button type="button" className="mc-theme-toggle" onClick={onToggleDarkMode} aria-label={darkMode?'Activar modo claro':'Activar modo oscuro'} title={darkMode?'Modo claro':'Modo oscuro'}>{darkMode?<Sun size={18}/>:<Moon size={18}/>}</button></header>
     <main>
       <p className="mc-login-kicker">TUS FINANZAS, EN ORDEN</p>
       <h1>Tu dinero.<br/>Más claro.</h1>
