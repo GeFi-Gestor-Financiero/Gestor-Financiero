@@ -22,6 +22,7 @@ type MobileConceptProps = {
   userPhotoURL?: string;
   summary: { patrimonio: number; accounts: number; cash: number; investment: number; income: number; expense: number };
   transactions: Transaction[];
+  historyTransactions: Transaction[];
   accounts: Account[];
   settings: UserSettings;
   onAddTransaction: (data: Omit<Transaction, 'id' | 'createdAt' | 'uid'>) => Promise<void>;
@@ -153,23 +154,65 @@ function AddScreen({ accounts, settings, onAddTransaction, initialType='Gasto' }
   </main>;
 }
 
-function PlanScreen({ settings, summary }: Pick<MobileConceptProps,'settings'|'summary'>) {
+function PlanScreen({ settings, summary, transactions, historyTransactions, onSaveSettings }: Pick<MobileConceptProps,'settings'|'summary'|'transactions'|'historyTransactions'|'onSaveSettings'>) {
   const budget=Object.values(settings.budgets||{}).reduce((sum,value)=>sum+value,0);
   const progress=budget?Math.min(100,(summary.expense/budget)*100):0;
+  const [openForm,setOpenForm]=useState<'plan'|'goal'|'budget'|null>(null);
+  const [name,setName]=useState('');
+  const [amount,setAmount]=useState('');
+  const [date,setDate]=useState('');
+  const [category,setCategory]=useState(settings.categorias[0]||'General');
+  const [error,setError]=useState('');
+  const plans=settings.financialPlans||[];
+  const goals=settings.savingsGoals||[];
+  const saved=historyTransactions.filter(item=>item.categoria==='Ahorro').reduce((sum,item)=>sum+item.monto*Number(item.cotizacion||1),0);
+  const monthKey=(value:Date)=>`${value.getFullYear()}-${String(value.getMonth()+1).padStart(2,'0')}`;
+  const now=new Date();
+  const months=Array.from({length:6},(_,index)=>{const value=new Date(now.getFullYear(),now.getMonth()-5+index,1);return {key:monthKey(value),label:new Intl.DateTimeFormat(settings.language==='en'?'en-US':'es-AR',{month:'short'}).format(value).replace('.','')}});
+  const deltas=new Map(months.map(item=>[item.key,0]));
+  historyTransactions.forEach(item=>{const key=item.fecha.slice(0,7);if(!deltas.has(key))return;const value=item.monto*Number(item.cotizacion||1);const positive=item.categoria==='Ingreso'||item.categoria==='Ef+';const negative=item.categoria==='Gasto'||item.categoria==='Gasto efectivo'||item.categoria==='Ef-';if(positive)deltas.set(key,(deltas.get(key)||0)+value);if(negative)deltas.set(key,(deltas.get(key)||0)-value)});
+  const totalDelta=[...deltas.values()].reduce((sum,value)=>sum+value,0);
+  let running=summary.patrimonio-totalDelta;
+  const trend=months.map(item=>{running+=deltas.get(item.key)||0;return {...item,value:running}});
+  const values=trend.map(item=>item.value),min=Math.min(...values),max=Math.max(...values),span=Math.max(1,max-min);
+  const points=trend.map((item,index)=>`${12+index*(276/(trend.length-1))},${102-((item.value-min)/span)*74}`).join(' ');
+  const resetForm=()=>{setOpenForm(null);setName('');setAmount('');setDate('');setError('')};
+  const validAmount=()=>{const value=Number(amount.replace(',','.'));if(!Number.isFinite(value)||value<=0){setError('Ingresá un importe mayor a cero.');return null}return value};
+  const savePlan=async()=>{const value=validAmount();if(!name.trim()||value===null||!date){setError('Completá el nombre, el importe y la fecha.');return}await onSaveSettings({...settings,financialPlans:[...plans,{id:crypto.randomUUID(),nombre:name.trim(),objetivo:value,fechaObjetivo:date}]});resetForm()};
+  const saveGoal=async()=>{const value=validAmount();if(!name.trim()||value===null){setError('Completá el nombre y el importe objetivo.');return}await onSaveSettings({...settings,savingsGoals:[...goals,{id:crypto.randomUUID(),nombre:name.trim(),objetivo:value}]});resetForm()};
+  const saveBudget=async()=>{const value=validAmount();if(value===null)return;await onSaveSettings({...settings,budgets:{...(settings.budgets||{}),[category]:value}});resetForm()};
   return <main className="mc-screen">
     <Topbar eyebrow="TU MES" title="Planificación"/>
+    <section className="mc-plan-actions" aria-label="Crear planificación">
+      <button onClick={()=>{setOpenForm('plan');setError('')}}><Plus size={18}/><span><strong>Nuevo plan</strong><small>Meta con fecha</small></span></button>
+      <button onClick={()=>{setOpenForm('goal');setError('')}}><Target size={18}/><span><strong>Objetivo</strong><small>Ahorro deseado</small></span></button>
+      <button onClick={()=>{setOpenForm('budget');setError('')}}><CircleDollarSign size={18}/><span><strong>Presupuesto</strong><small>Límite por categoría</small></span></button>
+    </section>
+    <section className="mc-money-trend">
+      <div className="mc-section-title"><div><small>ÚLTIMOS 6 MESES</small><h3>Evolución de tu dinero</h3></div><LineChart size={19}/></div>
+      <strong>{settings.hideBalances?'••••':money(trend.at(-1)?.value||0,settings.monedaBase)}</strong>
+      <svg viewBox="0 0 300 120" role="img" aria-label="Gráfico de evolución del patrimonio durante los últimos seis meses"><defs><linearGradient id="mcTrendFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="currentColor" stopOpacity=".28"/><stop offset="1" stopColor="currentColor" stopOpacity="0"/></linearGradient></defs><polygon points={`12,110 ${points} 288,110`} fill="url(#mcTrendFill)"/><polyline points={points} fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>{trend.map((item,index)=><circle key={item.key} cx={12+index*(276/(trend.length-1))} cy={102-((item.value-min)/span)*74} r="3.5" fill="currentColor"/>)}</svg>
+      <div className="mc-trend-labels">{trend.map(item=><span key={item.key}>{item.label}</span>)}</div>
+      <p>Patrimonio estimado a partir de tus ingresos y gastos registrados.</p>
+    </section>
     <section className="mc-budget">
-      <small>PRESUPUESTO</small><h2>{budget ? money(summary.expense,settings.monedaBase) : 'Sin presupuesto'} <span>{budget?`de ${money(budget,settings.monedaBase)}`:'del mes actual'}</span></h2>
+      <small>PRESUPUESTO DEL MES</small><h2>{budget ? money(summary.expense,settings.monedaBase) : 'Sin presupuesto'} <span>{budget?`de ${money(budget,settings.monedaBase)}`:'del mes actual'}</span></h2>
       <div><i style={{width:`${progress}%`}}/></div><p><span>{budget?`${progress.toFixed(0)}% utilizado`:'Configurá un límite mensual'}</span><b>{budget?`${money(Math.max(0,budget-summary.expense),settings.monedaBase)} disponible`:''}</b></p>
     </section>
     <section className="mc-section">
-      <div className="mc-section-title"><h3>Objetivos</h3><button>Editar</button></div>
-      {(settings.savingsGoals||[]).length?(settings.savingsGoals||[]).map(goal=><article key={goal.id} className="mc-goal"><span><Target size={20}/></span><div><strong>{goal.nombre}</strong><small>{money(goal.objetivo,settings.monedaBase)} objetivo</small></div></article>):<p className="mc-empty-state">No hay objetivos configurados.</p>}
+      <div className="mc-section-title"><h3>Planes activos</h3><button onClick={()=>setOpenForm('plan')}>Agregar</button></div>
+      {plans.length?plans.map(plan=><article key={plan.id} className="mc-plan-row"><span><CalendarDays size={18}/></span><div><strong>{plan.nombre}</strong><small>{money(plan.objetivo,settings.monedaBase)} para {new Intl.DateTimeFormat('es-AR',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(`${plan.fechaObjetivo}T12:00:00`))}</small></div><button aria-label={`Eliminar plan ${plan.nombre}`} onClick={()=>void onSaveSettings({...settings,financialPlans:plans.filter(item=>item.id!==plan.id)})}><Trash2 size={16}/></button></article>):<p className="mc-empty-state">Todavía no creaste ningún plan financiero.</p>}
     </section>
     <section className="mc-section">
-      <div className="mc-section-title"><h3>Próximos pagos</h3><button>Calendario</button></div>
+      <div className="mc-section-title"><h3>Objetivos de ahorro</h3><button onClick={()=>setOpenForm('goal')}>Agregar</button></div>
+      {goals.length?goals.map(goal=>{const goalProgress=Math.min(100,saved/goal.objetivo*100);return <article key={goal.id} className="mc-goal"><span><Target size={20}/></span><div><strong>{goal.nombre}</strong><small>{settings.hideBalances?'••••':`${money(saved,settings.monedaBase)} de ${money(goal.objetivo,settings.monedaBase)}`}</small><i><em style={{width:`${goalProgress}%`}}/></i></div><b>{goalProgress.toFixed(0)}%</b><button aria-label={`Eliminar objetivo ${goal.nombre}`} onClick={()=>void onSaveSettings({...settings,savingsGoals:goals.filter(item=>item.id!==goal.id)})}><Trash2 size={15}/></button></article>}):<p className="mc-empty-state">No hay objetivos configurados.</p>}
+    </section>
+    <section className="mc-section"><div className="mc-section-title"><h3>Presupuestos por categoría</h3><button onClick={()=>setOpenForm('budget')}>Configurar</button></div><div className="mc-budget-list">{Object.entries(settings.budgets||{}).filter(([,value])=>value>0).map(([item,value])=>{const spent=transactions.filter(transaction=>(transaction.categoriaDetalle||'General')===item&&(transaction.categoria==='Gasto'||transaction.categoria==='Gasto efectivo'||transaction.categoria==='Ef-')).reduce((sum,transaction)=>sum+transaction.monto*Number(transaction.cotizacion||1),0);const percent=Math.min(100,spent/value*100);return <article key={item}><div><strong>{item}</strong><span>{settings.hideBalances?'••••':`${money(spent,settings.monedaBase)} / ${money(value,settings.monedaBase)}`}</span></div><i><em className={percent>=100?'danger':''} style={{width:`${percent}%`}}/></i><button aria-label={`Eliminar presupuesto ${item}`} onClick={()=>{const next={...(settings.budgets||{})};delete next[item];void onSaveSettings({...settings,budgets:next})}}><Trash2 size={15}/></button></article>})}{budget===0&&<p className="mc-empty-state">Definí un límite para comenzar a controlar tus gastos.</p>}</div></section>
+    <section className="mc-section">
+      <div className="mc-section-title"><h3>Próximos pagos</h3></div>
       {(settings.paymentReminders||[]).length?(settings.paymentReminders||[]).slice(0,3).map(item=><div key={item.id} className="mc-due"><time><b>{item.fecha.slice(-2)}</b><small>{item.fecha.slice(5,7)}</small></time><div><strong>{item.nombre}</strong><small>{item.estado}</small></div><b>{item.monto?money(item.monto,item.moneda):''}</b></div>):<p className="mc-empty-state">No hay pagos próximos.</p>}
     </section>
+    {openForm&&<div className="mc-sheet-backdrop" onClick={resetForm}><form className="mc-sheet mc-plan-sheet" onClick={event=>event.stopPropagation()} onSubmit={event=>{event.preventDefault();void(openForm==='plan'?savePlan():openForm==='goal'?saveGoal():saveBudget())}}><div className="mc-sheet-head"><div><small>PLANIFICACIÓN</small><h3>{openForm==='plan'?'Crear plan':openForm==='goal'?'Nuevo objetivo':'Definir presupuesto'}</h3></div><button type="button" onClick={resetForm} aria-label="Cerrar"><X size={19}/></button></div>{openForm!=='budget'&&<label>Nombre<input autoFocus value={name} onChange={event=>setName(event.target.value)} placeholder={openForm==='plan'?'Ej: Viaje':'Ej: Fondo de emergencia'} maxLength={60}/></label>}{openForm==='budget'&&<label>Categoría<select value={category} onChange={event=>setCategory(event.target.value)}>{settings.categorias.map(item=><option key={item}>{item}</option>)}</select></label>}<label>Importe objetivo<input type="number" min="0.01" step="any" value={amount} onChange={event=>setAmount(event.target.value)} placeholder="0"/></label>{openForm==='plan'&&<label>Fecha objetivo<input type="date" min={new Date().toISOString().slice(0,10)} value={date} onChange={event=>setDate(event.target.value)}/></label>}{error&&<p className="mc-form-error">{error}</p>}<button className="mc-submit">Guardar</button></form></div>}
   </main>;
 }
 
