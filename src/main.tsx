@@ -9,7 +9,7 @@ import AppErrorBoundary from './components/AppErrorBoundary'
 
 if ('serviceWorker' in navigator && window.location.hostname === 'gefi-gestor-financiero.github.io') {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => undefined)
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).then((registration) => registration.update()).catch(() => undefined)
   })
 }
 
