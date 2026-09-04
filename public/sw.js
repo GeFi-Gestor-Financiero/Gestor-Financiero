@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gefi-app-shell-v13';
+const CACHE_NAME = 'gefi-app-shell-v14';
 const BASE_PATH = '/Gestor-Financiero/';
 const APP_SHELL = [
   BASE_PATH,
