@@ -9,9 +9,10 @@ interface LoginProps {
   darkMode: boolean;
   onToggleDarkMode: () => void;
   mobileConcept?: boolean;
+  onOpenSupport: () => void;
 }
 
-export default function Login({ onLoginSuccess, darkMode, onToggleDarkMode, mobileConcept = false }: LoginProps) {
+export default function Login({ onLoginSuccess, darkMode, onToggleDarkMode, mobileConcept = false, onOpenSupport }: LoginProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [email, setEmail] = useState('');
@@ -89,7 +90,7 @@ export default function Login({ onLoginSuccess, darkMode, onToggleDarkMode, mobi
       <button className="mc-login-switch" type="button" onClick={()=>{setRegistering(!registering);setError(null)}}>{registering?'Ya tengo una cuenta':'Crear una cuenta'}</button>
       <button className="mc-guest-button" type="button" disabled={loading} onClick={handleGuestLogin}><User size={16}/>Iniciar como invitado</button>
     </main>
-    <footer><button onClick={()=>setInfo('privacy')}>Privacidad</button><span>·</span><a href="mailto:gefisupport@gmail.com">Soporte</a></footer>
+    <footer><button onClick={()=>setInfo('privacy')}>Privacidad</button><span>·</span><button type="button" onClick={onOpenSupport}>Soporte</button></footer>
     {info&&<PublicInfoDialog type={info} onClose={()=>setInfo(null)}/>}
   </div>;
 
@@ -200,7 +201,7 @@ export default function Login({ onLoginSuccess, darkMode, onToggleDarkMode, mobi
               <Sparkles className="w-3 h-3 text-blue-500" />
               Tus datos se sincronizan de forma segura entre tus dispositivos.
             </p>
-            <div className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[10px]"><button type="button" onClick={() => setInfo('privacy')} className="text-blue-600 dark:text-blue-400 hover:underline">Privacidad</button><button type="button" onClick={() => setInfo('terms')} className="text-blue-600 dark:text-blue-400 hover:underline">Términos de uso</button><a href="mailto:gefisupport@gmail.com" className="text-blue-600 dark:text-blue-400 hover:underline">Soporte</a></div>
+            <div className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[10px]"><button type="button" onClick={() => setInfo('privacy')} className="text-blue-600 dark:text-blue-400 hover:underline">Privacidad</button><button type="button" onClick={() => setInfo('terms')} className="text-blue-600 dark:text-blue-400 hover:underline">Términos de uso</button><button type="button" onClick={onOpenSupport} className="text-blue-600 dark:text-blue-400 hover:underline">Soporte</button></div>
           </div>
         </div>
       </motion.div>
