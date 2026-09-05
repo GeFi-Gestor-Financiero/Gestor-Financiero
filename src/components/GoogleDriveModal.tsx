@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { auth, provider } from '../firebase';
+import { auth, driveProvider } from '../firebase';
 import { 
   Cloud, 
   CloudOff, 
@@ -99,7 +99,7 @@ export default function GoogleDriveModal({
     setLoading(true);
     setStatusMessage(null);
     try {
-      const result = await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, driveProvider);
       const credential = GoogleAuthProvider.credentialFromResult(result);
       if (credential?.accessToken) {
         onSetDriveToken(credential.accessToken);

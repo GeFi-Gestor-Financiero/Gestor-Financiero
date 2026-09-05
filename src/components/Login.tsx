@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { signInWithPopup, signInWithRedirect, signInAnonymously, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth, provider } from '../firebase';
+import { auth, authProvider } from '../firebase';
 import { LogIn, ShieldAlert, Sparkles, User, Wallet, Sun, Moon } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -24,14 +24,14 @@ export default function Login({ onLoginSuccess, darkMode, onToggleDarkMode, mobi
     setLoading(true);
     setError(null);
     try {
-      const result = await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, authProvider);
       const credential = GoogleAuthProvider.credentialFromResult(result);
       const token = credential?.accessToken || undefined;
       onLoginSuccess(token);
     } catch (err: any) {
       console.error(err);
       if (err?.code === 'auth/popup-blocked' || err?.code === 'auth/cancelled-popup-request') {
-        await signInWithRedirect(auth, provider);
+        await signInWithRedirect(auth, authProvider);
         return;
       }
       setError(err?.code === 'auth/unauthorized-domain' ? 'Este dominio local no está autorizado. Abrí la prueba desde localhost.' : 'No pudimos iniciar sesión con Google. Volvé a intentarlo.');

@@ -6,8 +6,26 @@ const allowedOrigins = new Set([
   'http://localhost:4175',
 ]);
 
-const clean = (value, limit) => String(value || '').replace(/[<>]/g, '').trim().slice(0, limit);
+const clean = (value, limit) => String(value || '').replace(/[<>\u0000-\u001F\u007F]/g, '').trim().slice(0, limit);
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_BODY_BYTES = 12_000;
+const RATE_LIMIT = 5;
+const RATE_WINDOW_SECONDS = 600;
+
+async function rateLimit(request) {
+  const address = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(address));
+  const key = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+  const cacheKey = new Request(`https://gefi-rate-limit.invalid/${key}`);
+  const cache = caches.default;
+  const existing = await cache.match(cacheKey);
+  const attempts = existing ? Number(await existing.text()) || 0 : 0;
+  if (attempts >= RATE_LIMIT) return false;
+  await cache.put(cacheKey, new Response(String(attempts + 1), {
+    headers: { 'Cache-Control': `max-age=${RATE_WINDOW_SECONDS}` },
+  }));
+  return true;
+}
 
 function response(origin, status, body) {
   const headers = {
@@ -25,6 +43,9 @@ export default {
     const origin = request.headers.get('Origin') || '';
     if (request.method === 'OPTIONS') return response(origin, allowedOrigins.has(origin) ? 204 : 403);
     if (request.method !== 'POST' || !allowedOrigins.has(origin)) return response(origin, 403, { ok: false });
+    const contentLength = Number(request.headers.get('Content-Length') || 0);
+    if (contentLength > MAX_BODY_BYTES) return response(origin, 413, { ok: false, error: 'payload_too_large' });
+    if (!await rateLimit(request)) return response(origin, 429, { ok: false, error: 'rate_limited' });
 
     let payload;
     try { payload = await request.json(); } catch { return response(origin, 400, { ok: false, error: 'invalid_json' }); }
@@ -57,4 +78,3 @@ export default {
     return response(origin, 200, { ok: true });
   },
 };
-

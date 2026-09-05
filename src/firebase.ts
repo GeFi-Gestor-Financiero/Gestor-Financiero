@@ -18,9 +18,13 @@ if (typeof window !== 'undefined' && window.location.hostname === 'gefi-gestor-f
   initializeAppCheck(app, { provider: new ReCaptchaEnterpriseProvider('6LeHWJ8tAAAAAKESoxjs71VrRD0P7JkSMQuB6Ouo'), isTokenAutoRefreshEnabled: true });
 }
 const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
-provider.addScope("https://www.googleapis.com/auth/drive.file");
-provider.setCustomParameters({ prompt: "select_account" });
+// Keep regular sign-in least-privileged. Drive access is requested only when
+// the user explicitly opens the backup integration.
+const authProvider = new GoogleAuthProvider();
+authProvider.setCustomParameters({ prompt: "select_account" });
+const driveProvider = new GoogleAuthProvider();
+driveProvider.addScope("https://www.googleapis.com/auth/drive.file");
+driveProvider.setCustomParameters({ prompt: "select_account" });
 
 // If firestoreDatabaseId is set and is not "(default)", we use it, otherwise use the specific database ID
 const dbId = (config as any).firestoreDatabaseId || "ai-studio-a94cc835-b2e3-4297-b9d5-2f6cdda80b7d";
@@ -82,4 +86,4 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
-export { app, auth, db, provider };
+export { app, auth, db, authProvider, driveProvider };
