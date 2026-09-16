@@ -10,7 +10,7 @@ import {
 import { Account, Loan, Transaction, UserSettings } from '../types';
 import SmartTransactionInput from './SmartTransactionInput';
 
-type Screen = 'home' | 'activity' | 'add' | 'transfer' | 'plan' | 'profile';
+type Screen = 'home' | 'activity' | 'add' | 'transfer' | 'loan' | 'plan' | 'profile';
 
 const money = (value: number, currency: string) => new Intl.NumberFormat('es-AR', {
   style: 'currency', currency, maximumFractionDigits: 2,
@@ -34,7 +34,7 @@ type MobileConceptProps = {
   onDeleteAccount: (id: string) => Promise<void>;
   onSaveSettings: (settings: UserSettings) => Promise<void>;
   onRepayLoan: (loan: Loan, amount: number, accountId: string) => Promise<void>;
-  onAddLoan: (data: { persona: string; monto: number; motivo: string; cuentaId: string }) => Promise<void>;
+  onAddLoan: (data: { persona: string; monto: number; motivo: string; cuentaId: string; fecha?: string }) => Promise<void>;
   onRepayPerson: (person: string, amount: number, accountId: string) => Promise<void>;
   onWithdrawInvestment: (amount: number, platform: string, accountId: string) => Promise<void>;
   onExport: () => void;
@@ -102,8 +102,6 @@ function HomeScreen({ navigate, userName, summary, transactions, accounts, loans
       </div>
     </section>
 
-    {debtTotal>0&&<button className="mc-debt-card" onClick={()=>setLoansOpen(true)}><span><HandCoins size={19}/></span><div><small>PRÉSTAMOS PENDIENTES</small><strong>{settings.hideBalances?'••••':money(debtTotal,settings.monedaBase)}</strong></div><ChevronRight size={18}/></button>}
-
     <section className="mc-section">
       <div className="mc-section-title"><h3>Última actividad</h3><button onClick={() => navigate('activity')}>Ver todo</button></div>
       <Movements transactions={transactions} accounts={accounts} currency={settings.monedaBase} hidden={settings.hideBalances} limit={4} onHold={setActionTransaction}/>
@@ -112,6 +110,7 @@ function HomeScreen({ navigate, userName, summary, transactions, accounts, loans
 
     {nextPayment&&<button className="mc-reminder" onClick={() => navigate('plan')}><span><CalendarDays size={20}/></span><div><small>PRÓXIMO PAGO</small><strong>{nextPayment.nombre} · {nextPayment.fecha}</strong></div><ChevronRight size={18}/></button>}
     {settings.quickLinks.length>0&&<section className="mc-section"><div className="mc-section-title"><h3>Accesos directos</h3></div><div className="mc-links">{settings.quickLinks.map(link=><a key={link.id} href={link.url} target="_blank" rel="noreferrer"><img src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(link.url)}&sz=64`} alt=""/><span>{link.nombre||new URL(link.url).hostname.replace('www.','')}</span></a>)}</div></section>}
+    <section className="mc-section mc-home-loans"><div className="mc-section-title"><div><h3>Préstamos realizados</h3><small>Total pendiente: {settings.hideBalances?'••••':money(debtTotal,settings.monedaBase)}</small></div><button onClick={()=>navigate('loan')}>Nuevo préstamo</button></div>{loanGroups.length?<div className="mc-loan-list">{loanGroups.map(group=><button key={group.person.toLowerCase()} onClick={()=>{setLoanPerson(group.person);setLoanMode('repay');setRepaymentAccount(accounts[0]?.id||'')}}><span><strong>{group.person}</strong><small>Agregar deuda o registrar una devolución</small></span><b>{settings.hideBalances?'••••':money(group.total,settings.monedaBase)}</b></button>)}</div>:<div className="mc-empty-state"><HandCoins size={19}/><span>Todavía no registraste préstamos.</span></div>}</section>
     {smartOpen&&<div className="mc-sheet-backdrop" onClick={()=>setSmartOpen(false)}><div className="mc-smart-sheet" onClick={event=>event.stopPropagation()}><div className="mc-sheet-head"><div><small>REGISTRO INTELIGENTE</small><h3>Contame qué pasó</h3></div><button onClick={()=>setSmartOpen(false)} aria-label="Cerrar"><X size={19}/></button></div><SmartTransactionInput accounts={accounts} categories={settings.categorias} investmentPlatforms={settings.investmentPlatforms||[]} currency={settings.monedaBase} language={settings.language||'es'} onAddTransaction={async data=>{await onAddTransaction(data);setSmartOpen(false)}}/></div></div>}
     {actionTransaction&&<div className="mc-sheet-backdrop" onClick={()=>setActionTransaction(null)}><div className="mc-action-sheet" onClick={event=>event.stopPropagation()}><div><strong>{actionTransaction.motivo||actionTransaction.categoria}</strong><small>{money(actionTransaction.monto,actionTransaction.moneda||settings.monedaBase)}</small></div><button onClick={()=>{setEditing(actionTransaction);setActionTransaction(null)}}><Pencil size={18}/>Editar movimiento</button><button className="danger" onClick={async()=>{await onDeleteTransaction(actionTransaction.id);setActionTransaction(null)}}><Trash2 size={18}/>Eliminar movimiento</button><button onClick={()=>setActionTransaction(null)}>Cancelar</button></div></div>}
     {editing&&<div className="mc-sheet-backdrop" onClick={()=>setEditing(null)}><form className="mc-sheet" onClick={event=>event.stopPropagation()} onSubmit={async event=>{event.preventDefault();await onEditTransaction(editing);setEditing(null)}}><div className="mc-sheet-head"><h3>Editar movimiento</h3><button type="button" onClick={()=>setEditing(null)}><X size={19}/></button></div><label>Fecha<input type="date" value={editing.fecha} onChange={event=>setEditing({...editing,fecha:event.target.value})}/></label><label>Importe<input type="number" min="0.01" step="any" value={editing.monto} onChange={event=>setEditing({...editing,monto:Number(event.target.value)})}/></label><label>Detalle<input value={editing.motivo||''} onChange={event=>setEditing({...editing,motivo:event.target.value})}/></label><button className="mc-submit">Guardar cambios</button></form></div>}
@@ -146,12 +145,13 @@ function ActivityScreen({ summary, transactions, accounts, settings, onDeleteTra
   </main>;
 }
 
-function AddScreen({ accounts, settings, onAddTransaction, initialType='Gasto' }: Pick<MobileConceptProps,'accounts'|'settings'|'onAddTransaction'> & {initialType?:string}) {
+function AddScreen({ accounts, settings, onAddTransaction, onAddLoan, initialType='Gasto' }: Pick<MobileConceptProps,'accounts'|'settings'|'onAddTransaction'|'onAddLoan'> & {initialType?:string}) {
   const [type, setType] = useState(initialType);
   const [amount, setAmount] = useState('0');
   const [accountId,setAccountId]=useState(accounts[0]?.id||'');
   const [destinationId,setDestinationId]=useState(accounts[1]?.id||'');
   const [detail,setDetail]=useState('');
+  const [loanPerson,setLoanPerson]=useState('');
   const [date,setDate]=useState(new Date().toISOString().slice(0,10));
   const [category,setCategory]=useState(settings.categorias[0]||'General');
   const [saving,setSaving]=useState(false);
@@ -159,18 +159,18 @@ function AddScreen({ accounts, settings, onAddTransaction, initialType='Gasto' }
   const [saved,setSaved]=useState(false);
   const addDigit = (digit: string) => setAmount(current => digit===','?(current.includes(',')?current:`${current},`):(current === '0' ? digit : `${current}${digit}`));
   const formattedAmount=(()=>{const [integer,decimal]=amount.split(',');const grouped=(integer||'0').replace(/\B(?=(\d{3})+(?!\d))/g,'.');return decimal===undefined?grouped:`${grouped},${decimal}`})();
-  const save=async()=>{const monto=Number(amount.replace(',','.'));if(!Number.isFinite(monto)||monto<=0){setError('Ingresá un importe mayor a cero.');return}if(type==='Transferencia'&&(!accountId||!destinationId||accountId===destinationId)){setError('Elegí cuentas distintas para transferir.');return}setSaving(true);setError('');try{await onAddTransaction({fecha:date,categoria:type==='Inversión'?'Inversion':type as Transaction['categoria'],monto,moneda:settings.monedaBase,cotizacion:1,motivo:detail.trim()||(type==='Transferencia'?'Transferencia interna':''),categoriaDetalle:type==='Transferencia'?'Transferencia interna':type==='Inversión'?'Inversión':category,cuentaOrigen:accountId,...(type==='Transferencia'?{cuentaDestino:destinationId}:{})});setAmount('0');setDetail('');setSaved(true);window.setTimeout(()=>setSaved(false),2500)}catch(reason){setError(reason instanceof Error?reason.message:'No se pudo guardar el movimiento.')}finally{setSaving(false)}};
+  const save=async()=>{const monto=Number(amount.replace(',','.'));if(!Number.isFinite(monto)||monto<=0){setError('Ingresá un importe mayor a cero.');return}if(type==='Transferencia'&&(!accountId||!destinationId||accountId===destinationId)){setError('Elegí cuentas distintas para transferir.');return}if(type==='Préstamo'&&!loanPerson.trim()){setError('Ingresá el nombre de la persona.');return}setSaving(true);setError('');try{if(type==='Préstamo')await onAddLoan({persona:loanPerson.trim(),monto,motivo:detail.trim(),cuentaId:accountId,fecha:date});else await onAddTransaction({fecha:date,categoria:type==='Inversión'?'Inversion':type as Transaction['categoria'],monto,moneda:settings.monedaBase,cotizacion:1,motivo:detail.trim()||(type==='Transferencia'?'Transferencia interna':''),categoriaDetalle:type==='Transferencia'?'Transferencia interna':type==='Inversión'?'Inversión':category,cuentaOrigen:accountId,...(type==='Transferencia'?{cuentaDestino:destinationId}:{})});setAmount('0');setDetail('');setLoanPerson('');setSaved(true);window.setTimeout(()=>setSaved(false),2500)}catch(reason){setError(reason instanceof Error?reason.message:'No se pudo guardar el movimiento.')}finally{setSaving(false)}};
   return <main className="mc-screen mc-add-screen">
     <Topbar eyebrow="NUEVO MOVIMIENTO" title="Registrar"/>
-    <div className="mc-segmented">{['Gasto', 'Ingreso', 'Inversión', 'Transferencia'].map(item => <button key={item} onClick={() => setType(item)} className={type === item ? 'active' : ''}>{item}</button>)}</div>
+    <div className="mc-segmented">{['Gasto', 'Ingreso', 'Inversión', 'Transferencia', 'Préstamo'].map(item => <button key={item} onClick={() => {setType(item);setError('')}} className={type === item ? 'active' : ''}>{item}</button>)}</div>
     <section className="mc-amount"><small>IMPORTE</small><div><span>{settings.monedaBase}</span><strong>{formattedAmount}</strong></div><p>Se sincronizará con tu cuenta</p></section>
-    <div className="mc-fields"><label><small>{type==='Transferencia'?'SALE DE':'CUENTA'}</small><select value={accountId} onChange={event=>setAccountId(event.target.value)}><option value="">Sin cuenta</option>{accounts.map(account=><option key={account.id} value={account.id}>{account.nombre}</option>)}</select></label>{type==='Transferencia'?<label><small>ENTRA A</small><select value={destinationId} onChange={event=>setDestinationId(event.target.value)}><option value="">Elegir</option>{accounts.filter(account=>account.id!==accountId).map(account=><option key={account.id} value={account.id}>{account.nombre}</option>)}</select></label>:<label><small>CATEGORÍA</small><select value={category} onChange={event=>setCategory(event.target.value)}>{settings.categorias.map(item=><option key={item}>{item}</option>)}</select></label>}</div>
+    <div className="mc-fields"><label><small>{type==='Transferencia'?'SALE DE':'CUENTA'}</small><select value={accountId} onChange={event=>setAccountId(event.target.value)}><option value="">Sin cuenta</option>{accounts.map(account=><option key={account.id} value={account.id}>{account.nombre}</option>)}</select></label>{type==='Transferencia'?<label><small>ENTRA A</small><select value={destinationId} onChange={event=>setDestinationId(event.target.value)}><option value="">Elegir</option>{accounts.filter(account=>account.id!==accountId).map(account=><option key={account.id} value={account.id}>{account.nombre}</option>)}</select></label>:type==='Préstamo'?<label><small>PERSONA</small><input value={loanPerson} onChange={event=>setLoanPerson(event.target.value)} placeholder="Nombre"/></label>:<label><small>CATEGORÍA</small><select value={category} onChange={event=>setCategory(event.target.value)}>{settings.categorias.map(item=><option key={item}>{item}</option>)}</select></label>}</div>
     <label className="mc-date-field"><small>FECHA</small><input type="date" value={date} onChange={event=>setDate(event.target.value)}/></label>
     <div className="mc-keypad">
       {['1','2','3','4','5','6','7','8','9',',','0','⌫'].map(key => <button key={key} onClick={() => key === '⌫' ? setAmount(value => value.length > 1 ? value.slice(0,-1) : '0') : addDigit(key)}>{key}</button>)}
     </div>
     <input className="mc-detail" value={detail} onChange={event=>setDetail(event.target.value)} placeholder="Detalle opcional" maxLength={100}/>
-    {error&&<p className="mc-form-error">{error}</p>}{saved&&<p className="mc-form-success"><Check size={15}/> Movimiento registrado</p>}<button className="mc-submit" disabled={saving} onClick={save}>{saving?'Guardando…':`Registrar ${type.toLowerCase()}`}</button>
+    {error&&<p className="mc-form-error">{error}</p>}{saved&&<p className="mc-form-success"><Check size={15}/> {type==='Préstamo'?'Préstamo registrado':'Movimiento registrado'}</p>}<button className="mc-submit" disabled={saving} onClick={save}>{saving?'Guardando…':`Registrar ${type.toLowerCase()}`}</button>
   </main>;
 }
 
@@ -301,6 +301,7 @@ export default function MobileConcept(props: MobileConceptProps) {
     {screen === 'activity' && <ActivityScreen {...props}/>}
     {screen === 'add' && <AddScreen {...props}/>}
     {screen === 'transfer' && <AddScreen {...props} initialType="Transferencia"/>}
+    {screen === 'loan' && <AddScreen {...props} initialType="Préstamo"/>}
     {screen === 'plan' && <PlanScreen {...props}/>}
     {screen === 'profile' && <ProfileScreen {...props}/>}
     <nav className="mc-nav" aria-label="Navegación principal">{tabs.map(([id, Icon, label]) => <button key={id} onClick={() => navigate(id)} className={`${screen === id ? 'active' : ''} ${id === 'add' ? 'add' : ''}`}><Icon size={20}/><span>{label}</span></button>)}</nav>

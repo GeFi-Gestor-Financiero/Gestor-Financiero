@@ -17,6 +17,7 @@ export interface Transaction {
   accountDelta?: number;
   balanceOrigin?: 'baseline' | 'new';
   balanceTarget?: number;
+  loanRepaid?: number;
 }
 
 export interface Account { id: string; nombre: string; tipo: 'Banco' | 'Billetera' | 'Efectivo'; moneda: string; saldoInicial: number; activa: boolean; }
