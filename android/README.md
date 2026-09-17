@@ -2,7 +2,7 @@
 
 Esta variante Android contiene un `NotificationListenerService` que observa **únicamente** el paquete oficial `com.mercadopago.wallet`. Las notificaciones se guardan localmente hasta que GeFi está abierta y hay una sesión iniciada.
 
-GeFi importa solamente avisos que parecen gastos (por ejemplo, “Pagaste”, “Compra aprobada” o “Pago realizado”). Ignora ingresos, rendimientos, devoluciones y reembolsos. Cada aviso tiene un identificador y no puede registrarse dos veces.
+GeFi clasifica avisos de gastos (por ejemplo, “Pagaste” o “Compra aprobada”), ingresos recibidos, devoluciones y rendimientos. Los rendimientos se guardan como ingresos con la categoría `Rendimientos Mercado Pago`. Cada aviso tiene un identificador y no puede registrarse dos veces.
 
 ## Compilar
 

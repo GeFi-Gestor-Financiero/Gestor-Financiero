@@ -275,7 +275,7 @@ function ProfileScreen({ userName, userEmail, userPhotoURL, settings, accounts, 
     </section>
     <h3 className="mc-settings-heading">Tus datos</h3>
     <section className="mc-settings-modern">
-      {androidBridge&&<button onClick={()=>androidBridge.openNotificationAccessSettings()}><span className="mc-setting-icon"><BellRing size={18}/></span><div><strong>Gastos de Mercado Pago</strong><small>{notificationAccess?'Registro automático activado':'Activá el acceso a notificaciones'}</small></div><i className={notificationAccess?'on':''}><em/></i></button>}
+      {androidBridge&&<button onClick={()=>androidBridge.openNotificationAccessSettings()}><span className="mc-setting-icon"><BellRing size={18}/></span><div><strong>Movimientos de Mercado Pago</strong><small>{notificationAccess?'Gastos, ingresos y rendimientos activados':'Activá el acceso a notificaciones'}</small></div><i className={notificationAccess?'on':''}><em/></i></button>}
       <button onClick={()=>setPanel('accounts')}><span className="mc-setting-icon"><WalletCards size={18}/></span><div><strong>Cuentas y configuración avanzada</strong><small>{accounts.length} {accounts.length===1?'cuenta configurada':'cuentas configuradas'}</small></div><ChevronRight size={18}/></button>
       <button onClick={onExport}><span className="mc-setting-icon"><Download size={18}/></span><div><strong>Descargar respaldo</strong><small>Exportá todos tus datos en formato JSON</small></div><ChevronRight size={18}/></button>
     </section>
