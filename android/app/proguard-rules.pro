@@ -1,0 +1,1 @@
+-keepclassmembers class com.gefi.app.GeFiBridge { @android.webkit.JavascriptInterface <methods>; }

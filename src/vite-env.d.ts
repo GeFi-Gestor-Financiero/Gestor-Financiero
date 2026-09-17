@@ -8,3 +8,11 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+interface Window {
+  GeFiAndroid?: {
+    isNotificationAccessEnabled(): boolean;
+    openNotificationAccessSettings(): void;
+    drainMarketPagoNotifications(): string;
+  };
+}
