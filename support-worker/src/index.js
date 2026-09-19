@@ -72,29 +72,21 @@ export default {
     const origin = request.headers.get('Origin') || '';
     if (request.method === 'OPTIONS') return response(origin, allowedOrigins.has(origin) ? 204 : 403);
     const url=new URL(request.url);
-    if(url.pathname==='/iol/register'&&request.method==='POST'&&allowedOrigins.has(origin)){
-      const identity=await verifyFirebaseToken(request);
-      if(!identity?.email||!identity?.sub)return response(origin,401,{ok:false,error:'unauthorized'});
-      await env.GEFI_SYNC.put(`iol-email:${String(identity.email).toLowerCase()}`,String(identity.sub));
-      return response(origin,200,{ok:true});
-    }
     if(url.pathname==='/iol/snapshot'&&request.method==='GET'&&allowedOrigins.has(origin)){
       const identity=await verifyFirebaseToken(request);
-      if(!identity?.sub)return response(origin,401,{ok:false,error:'unauthorized'});
-      const snapshot=await env.GEFI_SYNC.get(`iol-snapshot:${identity.sub}`,'json');
+      if(!identity?.sub||!identity?.email)return response(origin,401,{ok:false,error:'unauthorized'});
+      const snapshot=await env.GEFI_SYNC.get(`iol-snapshot-email:${String(identity.email).toLowerCase()}`,'json');
       return snapshot?response(origin,200,{ok:true,snapshot}):response(origin,404,{ok:false,error:'not_found'});
     }
     if(url.pathname==='/iol/sync'&&request.method==='POST'){
       const supplied=String(request.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'');
       if(!await safeSecretMatch(supplied,env.IOL_SYNC_SECRET))return response(origin,401,{ok:false,error:'unauthorized'});
       let payload;try{payload=await request.json()}catch{return response(origin,400,{ok:false,error:'invalid_json'})}
-      const email=clean(payload.email,180).toLowerCase(),valuationArs=Number(payload.valuationArs),dailyChangeArs=Number(payload.dailyChangeArs||0),dailyChangePct=Number(payload.dailyChangePct||0),marketDate=String(payload.marketDate||'');
-      if(!emailPattern.test(email)||!/^\d{4}-\d{2}-\d{2}$/.test(marketDate)||!Number.isFinite(valuationArs)||valuationArs<0||valuationArs>1e12||!Number.isFinite(dailyChangeArs)||!Number.isFinite(dailyChangePct))return response(origin,400,{ok:false,error:'invalid_snapshot'});
-      const uid=await env.GEFI_SYNC.get(`iol-email:${email}`);
-      if(!uid)return response(origin,404,{ok:false,error:'account_not_registered'});
+      const targetEmail=String(env.IOL_TARGET_EMAIL||'').trim().toLowerCase(),valuationArs=Number(payload.valuationArs),dailyChangeArs=Number(payload.dailyChangeArs||0),dailyChangePct=Number(payload.dailyChangePct||0),marketDate=String(payload.marketDate||'');
+      if(!emailPattern.test(targetEmail)||!/^\d{4}-\d{2}-\d{2}$/.test(marketDate)||!Number.isFinite(valuationArs)||valuationArs<0||valuationArs>1e12||!Number.isFinite(dailyChangeArs)||!Number.isFinite(dailyChangePct))return response(origin,400,{ok:false,error:'invalid_snapshot'});
       const positions=(Array.isArray(payload.positions)?payload.positions:[]).slice(0,200).flatMap(position=>{const symbol=clean(position?.symbol,24).toUpperCase(),quantity=Number(position?.quantity),unitPriceArs=Number(position?.unitPriceArs),positionValue=Number(position?.valuationArs),change=Number(position?.dailyChangePct||0);if(!symbol||![quantity,unitPriceArs,positionValue,change].every(Number.isFinite)||quantity<0||unitPriceArs<0||positionValue<0)return[];return[{symbol,description:clean(position.description,120),quantity,unitPriceArs,valuationArs:positionValue,dailyChangePct:change}]});
       const snapshot={provider:'iol',valuationArs,dailyChangeArs,dailyChangePct,marketDate,updatedAt:Date.now(),positions};
-      await env.GEFI_SYNC.put(`iol-snapshot:${uid}`,JSON.stringify(snapshot));
+      await env.GEFI_SYNC.put(`iol-snapshot-email:${targetEmail}`,JSON.stringify(snapshot));
       return response(origin,200,{ok:true,marketDate,valuationArs});
     }
     if (request.method !== 'POST' || !allowedOrigins.has(origin)||url.pathname!=='/') return response(origin, 403, { ok: false });
