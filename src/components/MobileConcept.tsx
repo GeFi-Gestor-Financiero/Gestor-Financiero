@@ -37,6 +37,7 @@ type MobileConceptProps = {
   onAddLoan: (data: { persona: string; monto: number; motivo: string; cuentaId: string; fecha?: string }) => Promise<void>;
   onRepayPerson: (person: string, amount: number, accountId: string) => Promise<void>;
   onWithdrawInvestment: (amount: number, platform: string, accountId: string) => Promise<void>;
+  onCorrectBalance: (kind: 'accounts'|'cash'|'patrimony'|'investment', target: number) => Promise<void>;
   onExport: () => void;
   onResetPassword: () => Promise<void>;
   onResetData: () => Promise<void>;
@@ -225,8 +226,8 @@ function PlanScreen({ settings, summary, transactions, historyTransactions, onSa
   </main>;
 }
 
-function ProfileScreen({ userName, userEmail, userPhotoURL, settings, accounts, onSaveSettings, onExport, onLogout, onAddAccount, onDeleteAccount, onResetPassword, onResetData, onDeleteUserAccount, onOpenSupport }:Pick<MobileConceptProps,'userName'|'userEmail'|'userPhotoURL'|'settings'|'accounts'|'onSaveSettings'|'onExport'|'onLogout'|'onAddAccount'|'onDeleteAccount'|'onResetPassword'|'onResetData'|'onDeleteUserAccount'|'onOpenSupport'>) {
-  const [panel,setPanel]=useState<'account'|'accounts'|'help'|'policies'|null>(null);
+function ProfileScreen({ userName, userEmail, userPhotoURL, settings, accounts, summary, onSaveSettings, onExport, onLogout, onAddAccount, onDeleteAccount, onCorrectBalance, onResetPassword, onResetData, onDeleteUserAccount, onOpenSupport }:Pick<MobileConceptProps,'userName'|'userEmail'|'userPhotoURL'|'settings'|'accounts'|'summary'|'onSaveSettings'|'onExport'|'onLogout'|'onAddAccount'|'onDeleteAccount'|'onCorrectBalance'|'onResetPassword'|'onResetData'|'onDeleteUserAccount'|'onOpenSupport'>) {
+  const [panel,setPanel]=useState<'account'|'accounts'|'correction'|'help'|'policies'|null>(null);
   const [showAccountForm,setShowAccountForm]=useState(false);
   const [accountDraft,setAccountDraft]=useState<{nombre:string;tipo:Account['tipo'];saldoInicial:string}>({nombre:'',tipo:'Banco',saldoInicial:'0'});
   const [deleteTarget,setDeleteTarget]=useState<Account|null>(null);
@@ -234,11 +235,24 @@ function ProfileScreen({ userName, userEmail, userPhotoURL, settings, accounts, 
   const [newPlatform,setNewPlatform]=useState('');
   const [riskAction,setRiskAction]=useState<'reset'|'delete'|null>(null);
   const [status,setStatus]=useState('');
+  const [correctionKind,setCorrectionKind]=useState<'accounts'|'cash'|'patrimony'|'investment'>('accounts');
+  const [correctionTarget,setCorrectionTarget]=useState(String(summary.accounts));
+  const [correctionError,setCorrectionError]=useState('');
+  const [correctionSaving,setCorrectionSaving]=useState(false);
   const androidBridge=typeof window!=='undefined'?window.GeFiAndroid:undefined;
   const [notificationAccess,setNotificationAccess]=useState(()=>androidBridge?.isNotificationAccessEnabled()||false);
   useEffect(()=>{const refresh=()=>setNotificationAccess(androidBridge?.isNotificationAccessEnabled()||false);window.addEventListener('focus',refresh);document.addEventListener('visibilitychange',refresh);return()=>{window.removeEventListener('focus',refresh);document.removeEventListener('visibilitychange',refresh)}},[androidBridge]);
   const addCategory=()=>{const value=newCategory.trim();if(!value||settings.categorias.some(item=>item.toLowerCase()===value.toLowerCase()))return;void onSaveSettings({...settings,categorias:[...settings.categorias,value]});setNewCategory('')};
   const addPlatform=()=>{const value=newPlatform.trim();const current=settings.investmentPlatforms||[];if(!value||current.some(item=>item.toLowerCase()===value.toLowerCase()))return;void onSaveSettings({...settings,investmentPlatforms:[...current,value]});setNewPlatform('')};
+  const correctionValues={accounts:summary.accounts,cash:summary.cash,patrimony:summary.patrimonio,investment:summary.investment};
+  const correctionLabels={accounts:'Dinero en cuenta',cash:'Dinero en efectivo',patrimony:'Patrimonio total',investment:'Inversiones'};
+  const selectCorrection=(kind:'accounts'|'cash'|'patrimony'|'investment')=>{setCorrectionKind(kind);setCorrectionTarget(String(correctionValues[kind]));setCorrectionError('');setStatus('')};
+  const applyCorrection=async()=>{const value=Number(correctionTarget.replace(',','.'));if(!Number.isFinite(value)||value<0){setCorrectionError('Ingresá un saldo válido, igual o mayor que cero.');return}if(Math.abs(value-correctionValues[correctionKind])<.01){setCorrectionError('El nuevo saldo es igual al actual.');return}setCorrectionSaving(true);setCorrectionError('');try{await onCorrectBalance(correctionKind,value);setStatus('Saldo corregido correctamente.');setCorrectionTarget(String(value))}catch(reason){setCorrectionError(reason instanceof Error?reason.message:'No se pudo corregir el saldo.')}finally{setCorrectionSaving(false)}};
+
+  if(panel==='correction')return <main className="mc-screen mc-subpage">
+    <header className="mc-subpage-head"><button onClick={()=>{setPanel(null);setCorrectionError('');setStatus('')}} aria-label="Volver"><ArrowLeft size={20}/></button><div><p>CONFIGURACIÓN</p><h1>Corrección de saldos</h1></div></header>
+    <section className="mc-section mc-balance-correction"><div className="mc-correction-intro"><span className="mc-setting-icon"><SlidersHorizontal size={18}/></span><div><strong>Ajustá tus importes reales</strong><p>Elegí el saldo que querés corregir e ingresá el valor correcto. La diferencia quedará registrada como una corrección.</p></div></div><div className="mc-correction-options">{(['accounts','cash','investment','patrimony'] as const).map(kind=><button type="button" key={kind} className={correctionKind===kind?'active':''} onClick={()=>selectCorrection(kind)}><span>{correctionLabels[kind]}</span><strong>{settings.hideBalances?'••••':money(correctionValues[kind],settings.monedaBase)}</strong></button>)}</div><form className="mc-correction-form" onSubmit={event=>{event.preventDefault();void applyCorrection()}}><label><small>NUEVO SALDO</small><div><span>{settings.monedaBase}</span><input autoFocus inputMode="decimal" value={correctionTarget} onChange={event=>{setCorrectionTarget(event.target.value);setCorrectionError('');setStatus('')}} placeholder="0,00"/></div></label><div className="mc-correction-preview"><span>Saldo actual</span><strong>{settings.hideBalances?'••••':money(correctionValues[correctionKind],settings.monedaBase)}</strong></div>{correctionError&&<p className="mc-form-error">{correctionError}</p>}{status&&<p className="mc-status-message">{status}</p>}<button className="mc-submit" disabled={correctionSaving}>{correctionSaving?'Aplicando…':'Aplicar corrección'}</button></form></section>
+  </main>;
 
   if(panel==='accounts')return <main className="mc-screen mc-subpage">
     <header className="mc-subpage-head"><button onClick={()=>setPanel(null)} aria-label="Volver"><ArrowLeft size={20}/></button><div><p>CONFIGURACIÓN</p><h1>Cuentas y organización</h1></div></header>
@@ -277,6 +291,7 @@ function ProfileScreen({ userName, userEmail, userPhotoURL, settings, accounts, 
     <section className="mc-settings-modern">
       {androidBridge&&<button onClick={()=>androidBridge.openNotificationAccessSettings()}><span className="mc-setting-icon"><BellRing size={18}/></span><div><strong>Movimientos de Mercado Pago</strong><small>{notificationAccess?'Gastos, ingresos y rendimientos activados':'Activá el acceso a notificaciones'}</small></div><i className={notificationAccess?'on':''}><em/></i></button>}
       <button onClick={()=>setPanel('accounts')}><span className="mc-setting-icon"><WalletCards size={18}/></span><div><strong>Cuentas y configuración avanzada</strong><small>{accounts.length} {accounts.length===1?'cuenta configurada':'cuentas configuradas'}</small></div><ChevronRight size={18}/></button>
+      <button onClick={()=>{selectCorrection('accounts');setPanel('correction')}}><span className="mc-setting-icon"><SlidersHorizontal size={18}/></span><div><strong>Corrección de saldos</strong><small>Ajustá cuenta, efectivo, inversiones o patrimonio</small></div><ChevronRight size={18}/></button>
       <button onClick={onExport}><span className="mc-setting-icon"><Download size={18}/></span><div><strong>Descargar respaldo</strong><small>Exportá todos tus datos en formato JSON</small></div><ChevronRight size={18}/></button>
     </section>
     <h3 className="mc-settings-heading">Ayuda</h3>
