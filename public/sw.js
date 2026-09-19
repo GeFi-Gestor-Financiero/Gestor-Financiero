@@ -1,11 +1,11 @@
-const CACHE_NAME = 'gefi-app-shell-v21';
+const CACHE_NAME = 'gefi-app-shell-v22';
 const BASE_PATH = '/Gestor-Financiero/';
 const APP_SHELL = [
   BASE_PATH,
   `${BASE_PATH}index.html`,
   `${BASE_PATH}manifest.webmanifest`,
   `${BASE_PATH}favicon.svg`,
-  `${BASE_PATH}pwa-icon.svg`,
+  `${BASE_PATH}pwa-icon-compact.svg`,
 ];
 
 self.addEventListener('install', (event) => {
