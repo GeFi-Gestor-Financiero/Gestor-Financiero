@@ -82,10 +82,10 @@ export default {
       const supplied=String(request.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'');
       if(!await safeSecretMatch(supplied,env.IOL_SYNC_SECRET))return response(origin,401,{ok:false,error:'unauthorized'});
       let payload;try{payload=await request.json()}catch{return response(origin,400,{ok:false,error:'invalid_json'})}
-      const targetEmail=String(env.IOL_TARGET_EMAIL||'').trim().toLowerCase(),valuationArs=Number(payload.valuationArs),dailyChangeArs=Number(payload.dailyChangeArs||0),dailyChangePct=Number(payload.dailyChangePct||0),marketDate=String(payload.marketDate||'');
-      if(!emailPattern.test(targetEmail)||!/^\d{4}-\d{2}-\d{2}$/.test(marketDate)||!Number.isFinite(valuationArs)||valuationArs<0||valuationArs>1e12||!Number.isFinite(dailyChangeArs)||!Number.isFinite(dailyChangePct))return response(origin,400,{ok:false,error:'invalid_snapshot'});
+      const targetEmail=String(env.IOL_TARGET_EMAIL||'').trim().toLowerCase(),valuationArs=Number(payload.valuationArs),initialInvestedArs=Number(payload.initialInvestedArs),totalGainArs=Number(payload.totalGainArs),totalGainPct=Number(payload.totalGainPct),dailyChangeArs=Number(payload.dailyChangeArs||0),dailyChangePct=Number(payload.dailyChangePct||0),marketDate=String(payload.marketDate||'');
+      if(!emailPattern.test(targetEmail)||!/^\d{4}-\d{2}-\d{2}$/.test(marketDate)||!Number.isFinite(valuationArs)||valuationArs<0||valuationArs>1e12||!Number.isFinite(initialInvestedArs)||initialInvestedArs<0||!Number.isFinite(totalGainArs)||!Number.isFinite(totalGainPct)||!Number.isFinite(dailyChangeArs)||!Number.isFinite(dailyChangePct))return response(origin,400,{ok:false,error:'invalid_snapshot'});
       const positions=(Array.isArray(payload.positions)?payload.positions:[]).slice(0,200).flatMap(position=>{const symbol=clean(position?.symbol,24).toUpperCase(),quantity=Number(position?.quantity),unitPriceArs=Number(position?.unitPriceArs),positionValue=Number(position?.valuationArs),change=Number(position?.dailyChangePct||0);if(!symbol||![quantity,unitPriceArs,positionValue,change].every(Number.isFinite)||quantity<0||unitPriceArs<0||positionValue<0)return[];return[{symbol,description:clean(position.description,120),quantity,unitPriceArs,valuationArs:positionValue,dailyChangePct:change}]});
-      const snapshot={provider:'iol',valuationArs,dailyChangeArs,dailyChangePct,marketDate,updatedAt:Date.now(),positions};
+      const snapshot={provider:'iol',valuationArs,initialInvestedArs,totalGainArs,totalGainPct,dailyChangeArs,dailyChangePct,marketDate,updatedAt:Date.now(),positions};
       await env.GEFI_SYNC.put(`iol-snapshot-email:${targetEmail}`,JSON.stringify(snapshot));
       return response(origin,200,{ok:true,marketDate,valuationArs});
     }

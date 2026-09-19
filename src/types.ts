@@ -33,13 +33,16 @@ export interface IolPositionSnapshot { symbol: string; description?: string; qua
 export interface IolInvestmentSnapshot {
   provider: 'iol';
   valuationArs: number;
+  initialInvestedArs?: number;
+  totalGainArs?: number;
+  totalGainPct?: number;
   dailyChangeArs?: number;
   dailyChangePct?: number;
   marketDate: string;
   updatedAt: number;
   positions: IolPositionSnapshot[];
 }
-export interface UserSettings { darkMode: boolean; hideBalances: boolean; monedaBase: string; monedas: string[]; categorias: string[]; widgets: string[]; quickLinks: QuickLink[]; showSavings?: boolean; onboardingCompleted?: boolean; currencySetupCompleted?: boolean; language?: 'es' | 'en'; budgets?: Record<string, number>; savingsGoals?: SavingsGoal[]; financialPlans?: FinancialPlan[]; fontScale?: 'normal' | 'large' | 'extraLarge'; investmentPlatforms?: string[]; paymentReminders?: PaymentReminder[]; reservedFunds?: ReservedFund[]; monthlyEmailSummary?: boolean; paymentEmailReminders?: boolean; }
+export interface UserSettings { darkMode: boolean; hideBalances: boolean; monedaBase: string; monedas: string[]; categorias: string[]; widgets: string[]; quickLinks: QuickLink[]; showSavings?: boolean; onboardingCompleted?: boolean; currencySetupCompleted?: boolean; language?: 'es' | 'en'; budgets?: Record<string, number>; savingsGoals?: SavingsGoal[]; financialPlans?: FinancialPlan[]; fontScale?: 'normal' | 'large' | 'extraLarge'; investmentPlatforms?: string[]; investmentBalanceOverrides?: Record<string, number>; paymentReminders?: PaymentReminder[]; reservedFunds?: ReservedFund[]; monthlyEmailSummary?: boolean; paymentEmailReminders?: boolean; }
 
 export interface MonthSummary {
   plataInicial: number;
