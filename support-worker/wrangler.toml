@@ -2,6 +2,9 @@ name = "gefi-support"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
 
+[[kv_namespaces]]
+binding = "GEFI_SYNC"
+id = "b55322cd6b31483aada1b33dd809acec"
+
 [observability]
 enabled = true
-
