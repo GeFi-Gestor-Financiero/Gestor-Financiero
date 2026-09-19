@@ -14,10 +14,11 @@ export default function TransactionList({ transactions, onDeleteTransaction, onE
   useEffect(() => { const syncDate = (event: Event) => { const input = event.target as HTMLInputElement; if (input.type === 'date' && input.closest('[role="dialog"]')) setEditDraft(current => current ? { ...current, fecha: input.value } : current); }; document.addEventListener('input', syncDate, true); return () => document.removeEventListener('input', syncDate, true); }, []);
   const format = (value: number, code = 'ARS') => new Intl.NumberFormat('es-AR', { style: 'currency', currency: code, maximumFractionDigits: 2 }).format(value);
   const isCorrection = (t: Transaction) => t.categoriaDetalle === 'Corrección de saldo' || /^Corrección de\s/i.test(t.motivo || '');
-  const typeFor = (t: Transaction) => isCorrection(t) ? 'Corrección' : t.categoria;
+  const isLoanRepayment = (t: Transaction) => t.categoria === 'Prestamo' && (/^Devolución de préstamo\b/i.test(t.motivo || '') || /^Devolución\b/i.test(t.categoriaDetalle || ''));
+  const typeFor = (t: Transaction) => isCorrection(t) ? 'Corrección' : isLoanRepayment(t) ? 'Devolución' : t.categoria;
   const colorFor = (t: Transaction) => {
     if (isCorrection(t)) return 'text-blue-600 dark:text-blue-400';
-    if (t.categoria === 'Ingreso' || t.categoria === 'Ef+') return 'text-emerald-600 dark:text-emerald-400';
+    if (t.categoria === 'Ingreso' || t.categoria === 'Ef+' || isLoanRepayment(t)) return 'text-emerald-600 dark:text-emerald-400';
     if (t.categoria === 'Inversion') return 'text-amber-700 dark:text-amber-300';
     if (t.categoria === 'Ahorro') return 'text-violet-600 dark:text-violet-400';
     if (t.categoria === 'Transferencia') return 'text-cyan-700 dark:text-cyan-300';
