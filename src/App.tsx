@@ -17,6 +17,7 @@ import PaymentCalendar from './components/PaymentCalendar';
 import InvestmentPreferences from './components/InvestmentPreferences';
 import MobileConcept from './components/MobileConcept';
 import SupportModal from './components/SupportModal';
+import ModernSettingsPanel from './components/ModernSettingsPanel';
 import './mobile-concept.css';
 import { applyLanguage } from './i18n';
 import { SUPPORTED_CURRENCIES } from './currencies';
@@ -263,7 +264,7 @@ export default function App() {
  {showPrivacy&&<PrivacyPolicyModal language={settings.language||'es'} onClose={()=>setShowPrivacy(false)}/>}
  {showHelp&&<HelpModal language={settings.language||'es'} onClose={()=>setShowHelp(false)} onContactSupport={()=>{setShowHelp(false);setShowSupport(true)}}/>}
  <SupportModal open={showSupport} onClose={()=>setShowSupport(false)} initialName={user.displayName} initialEmail={user.email} language={settings.language||'es'} source="web-app"/>
- {showSettings&&<SettingsPanel settings={settings} accounts={accounts} fixed={fixed} loans={loans} trashedTxs={trashedTxs} correctionValues={{accounts:summary.accounts,cash:summary.cash,patrimony:summary.patrimonio,investment:summary.investment}} onCorrectBalance={correctBalance} onRestoreTx={restoreTx} onPermanentlyDeleteTx={permanentlyDeleteTx} onClose={()=>setShowSettings(false)} onSave={saveSettings} onExport={exportAll} onImport={importBackup} onAddAccount={addAccount} onDeleteAccount={deleteAccount} onAddLoan={addLoan}/>}</div>
+ {showSettings&&<ModernSettingsPanel settings={settings} accounts={accounts} fixed={fixed} loans={loans} trashedTxs={trashedTxs} correctionValues={{accounts:summary.accounts,cash:summary.cash,patrimony:summary.patrimonio,investment:summary.investment}} onCorrectBalance={correctBalance} onRestoreTx={restoreTx} onPermanentlyDeleteTx={permanentlyDeleteTx} onClose={()=>setShowSettings(false)} onSave={saveSettings} onExport={exportAll} onImport={importBackup} onAddAccount={addAccount} onDeleteAccount={deleteAccount} onAddLoan={addLoan}/>}</div>
 }
 
 function DesktopSidebar({userName,onSettings,onHelp,onLogout}:{userName:string;onSettings:()=>void;onHelp:()=>void;onLogout:()=>void}) {
