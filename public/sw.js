@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gefi-app-shell-v22';
+const CACHE_NAME = 'gefi-app-shell-v23';
 const BASE_PATH = '/Gestor-Financiero/';
 const APP_SHELL = [
   BASE_PATH,
@@ -27,13 +27,13 @@ self.addEventListener('fetch', (event) => {
 
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(`${BASE_PATH}index.html`, copy));
+      caches.match(`${BASE_PATH}index.html`).then((cached) => {
+        const network = fetch(event.request).then((response) => {
+          if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(`${BASE_PATH}index.html`, response.clone()));
           return response;
-        })
-        .catch(() => caches.match(`${BASE_PATH}index.html`)),
+        }).catch(() => cached || Response.error());
+        return cached || network;
+      }),
     );
     return;
   }
