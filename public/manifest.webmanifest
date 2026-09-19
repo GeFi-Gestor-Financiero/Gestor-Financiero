@@ -10,7 +10,7 @@
   "theme_color": "#0a0f15",
   "icons": [
     {
-      "src": "/Gestor-Financiero/pwa-icon-compact.svg",
+      "src": "/Gestor-Financiero/pwa-icon-compact-v2.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
