@@ -5,7 +5,7 @@ const APP_SHELL = [
   `${BASE_PATH}index.html`,
   `${BASE_PATH}manifest.webmanifest`,
   `${BASE_PATH}favicon.svg`,
-  `${BASE_PATH}pwa-icon-compact-v2.svg`,
+  `${BASE_PATH}pwa-icon.svg`,
 ];
 
 self.addEventListener('install', (event) => {
