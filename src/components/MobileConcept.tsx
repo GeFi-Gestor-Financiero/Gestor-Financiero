@@ -49,7 +49,7 @@ type MobileConceptProps = {
 
 function Topbar({ eyebrow, title }: { eyebrow: string; title: string }) {
   return <header className="mc-topbar">
-    <div><p>{eyebrow}</p><h1>{title}</h1></div>
+    <div className="mc-topbar-brand"><img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="Logo de GeFi"/><div><p>{eyebrow}</p><h1>{title}</h1></div></div>
     <button aria-label="Notificaciones"><Bell size={19}/><i/></button>
   </header>;
 }
