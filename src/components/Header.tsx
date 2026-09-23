@@ -1,5 +1,5 @@
 import React from 'react';
-import { LogOut, User, Calendar, ChevronLeft, ChevronRight, TrendingUp, Sun, Moon, Eye, EyeOff, Settings, Languages } from 'lucide-react';
+import { LogOut, User, Calendar, ChevronLeft, ChevronRight, Sun, Moon, Eye, EyeOff, Settings, Languages } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 import { auth } from '../firebase';
 
@@ -64,15 +64,15 @@ export default function Header({
           
           {/* Logo & Info */}
           <div className="gefi-header-brand flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm">
-              <TrendingUp className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm">
+              <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="Logo de GeFi" className="h-8 w-8 rounded-lg" />
             </div>
             <div className="min-w-0">
               <h1 className="text-base font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
-                <span className="sm:hidden">GeFi</span><span className="hidden sm:inline">Mi Gestor Financiero</span>
+                <span className="sm:hidden">GeFi</span><span className="hidden sm:inline">GeFi Finanzas</span>
               </h1>
               <p className="text-[10px] text-slate-400 dark:text-slate-500 font-sans truncate">
-                <span className="sm:hidden">Control financiero personal</span><span className="hidden sm:inline">Control personal de ingresos, gastos y efectivo</span>
+                <span className="sm:hidden">Control financiero personal</span><span className="hidden sm:inline">Posición financiera personal</span>
               </p>
             </div>
           </div>

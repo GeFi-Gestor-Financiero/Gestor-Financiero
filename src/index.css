@@ -286,3 +286,71 @@ section[role="dialog"], div[role="dialog"], div[role="alertdialog"] { border: 1p
 .gefi-support-dialog form{display:grid;gap:15px;padding:20px}.gefi-support-dialog form>p{margin:0;color:#98a2ad;font-size:12px;line-height:1.5}.gefi-support-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.gefi-support-dialog label{color:#c7cdd4;font-size:10px;font-weight:700}.gefi-support-dialog input,.gefi-support-dialog textarea{display:block;width:100%;margin-top:6px;border:1px solid #28313b;border-radius:10px;background:#0a0f15;padding:12px;color:#f3f5f7;font:inherit;font-size:12px;outline:0}.gefi-support-dialog textarea{resize:vertical}.gefi-support-dialog input:focus,.gefi-support-dialog textarea:focus{border-color:#3157d5;box-shadow:0 0 0 3px rgb(49 87 213/.2)}.gefi-support-submit,.gefi-support-success button{display:flex;min-height:46px;align-items:center;justify-content:center;gap:8px;border:0;border-radius:10px;background:#3157d5;color:#fff;font-size:11px;font-weight:800}.gefi-support-submit svg{width:15px}.gefi-support-submit:disabled{opacity:.55}.gefi-support-note{color:#77828e;text-align:center;font-size:8px}.gefi-support-error{padding:10px!important;border:1px solid #633532;border-radius:9px;background:#281719;color:#ff9a92!important}.gefi-support-honeypot{position:absolute;left:-10000px}.gefi-support-success{padding:36px 22px;text-align:center}.gefi-support-success>svg{width:34px;height:34px;color:#63c892}.gefi-support-success h3{margin:13px 0 4px}.gefi-support-success p{margin:0 auto 20px;max-width:36ch;color:#98a2ad;font-size:11px;line-height:1.5}.gefi-support-success button{width:100%}
 @media(max-width:560px){.gefi-support-backdrop{align-items:end;padding:0}.gefi-support-dialog{max-height:92dvh;overflow-y:auto;border-width:1px 0 0;border-radius:18px 18px 0 0}.gefi-support-fields{grid-template-columns:1fr}}
 .gefi-investment-balances{display:grid;gap:0;margin-top:14px}.gefi-investment-balances>label{display:grid;grid-template-columns:minmax(0,1fr) minmax(130px,180px);align-items:center;gap:14px;min-height:66px;border-top:1px solid #edf0f2}.gefi-investment-balances>label:first-child{border-top:0}.gefi-investment-balances strong,.gefi-investment-balances small{display:block}.gefi-investment-balances strong{font-size:11px}.gefi-investment-balances small{margin-top:3px;color:#89919a;font-size:9px}.gefi-investment-balances .gefi-setting-input{margin:0;text-align:right;font-variant-numeric:tabular-nums}.gefi-investment-balances .gefi-setting-input:disabled{cursor:not-allowed;opacity:.66}.dark .gefi-investment-balances>label{border-color:#28313b}@media(max-width:560px){.gefi-investment-balances>label{grid-template-columns:1fr;gap:8px;padding:12px 0}}
+
+/* GeFi 2026 — professional finance workspace */
+@media (min-width:768px){
+  :root{--gf-ink:#111827;--gf-muted:#697386;--gf-line:#dfe3e8;--gf-paper:#f4f5f3;--gf-surface:#fff;--gf-navy:#0d1b2f;--gf-accent:#3157d5}
+  body{background:var(--gf-paper);color:var(--gf-ink);font-family:"Manrope GEFI","Segoe UI Variable Text","Segoe UI",sans-serif;font-variant-numeric:tabular-nums}
+  .gefi-shell{padding-left:252px;background:var(--gf-paper)!important}
+  .gefi-desktop-sidebar{width:252px;padding:24px 16px 18px;border-right:1px solid #202b39;background:#0c121b;color:#c7d0db}
+  .gefi-sidebar-brand{padding:0 10px 30px;font-size:20px;font-weight:780;letter-spacing:-.055em}
+  .gefi-sidebar-brand>span{width:38px;height:38px;border:1px solid rgb(255 255 255/.12);border-radius:10px;background:#2563eb;box-shadow:0 8px 24px rgb(0 0 0/.24);overflow:hidden}.gefi-sidebar-brand>span img{display:block;width:100%;height:100%;object-fit:cover}
+  .gefi-sidebar-brand::after{content:"FINANCIAL OS";margin-left:auto;color:#516073;font-size:7px;font-weight:800;letter-spacing:.18em}
+  .gefi-desktop-sidebar nav small{margin:19px 11px 7px;color:#536174;font-size:8px;letter-spacing:.16em}
+  .gefi-desktop-sidebar button{min-height:42px;border-radius:8px;color:#94a1b1;font-size:11px;font-weight:650}
+  .gefi-desktop-sidebar nav button:hover{background:#151f2c;color:#f6f8fb}.gefi-desktop-sidebar nav button.active{background:#172437;color:#fff;box-shadow:inset 2px 0 #5d7df0}
+  .gefi-sidebar-bottom{border-color:#202b39}.gefi-sidebar-user{border-color:#253142!important;background:#101923!important}.gefi-sidebar-user>span{background:#223b67}
+  .gefi-header{height:76px;border:0;border-bottom:1px solid var(--gf-line);background:rgb(255 255 255/.90);backdrop-filter:blur(18px) saturate(130%)}
+  .gefi-header-inner{height:100%;padding-inline:30px!important}.gefi-header-layout{height:100%}
+  .gefi-header-brand>div:first-child{width:34px;height:34px;border-radius:9px;background:var(--gf-navy);box-shadow:none}.gefi-header-brand h1{font-size:13px;font-weight:780;letter-spacing:-.025em}.gefi-header-brand p{margin-top:2px;color:#8b95a3;font-size:8px;letter-spacing:.035em}
+  .gefi-header-period{min-width:280px;border-color:#e0e4e9!important;border-radius:9px!important;background:#f6f7f8!important;padding:3px!important;box-shadow:inset 0 1px 1px rgb(15 23 42/.03)}
+  .gefi-header-period select,.gefi-header-period input{font-size:11px!important;font-weight:700!important}.gefi-account-button{padding:5px 8px!important;border:1px solid transparent}.gefi-account-button:hover{border-color:#e3e6ea;background:#f7f8f9!important}
+  .gefi-header-actions>button{width:34px;height:34px;display:grid;place-items:center;padding:0!important;border-color:#e1e5e9!important;border-radius:9px!important;background:#fff;color:#647080}
+  .gefi-main{max-width:1536px!important;padding:28px 30px 56px!important}
+  .gefi-welcome{min-height:170px;margin-bottom:20px!important;border:1px solid #172c49!important;border-radius:18px!important;background:linear-gradient(118deg,#0b1728 0%,#132944 64%,#1a3555 100%)!important;box-shadow:0 18px 48px rgb(16 35 59/.14)!important}
+  .gefi-welcome::before{content:"";position:absolute;right:15%;bottom:-115px;width:280px;height:280px;border:1px solid rgb(255 255 255/.08);border-radius:50%;box-shadow:0 0 0 42px rgb(255 255 255/.025),0 0 0 90px rgb(255 255 255/.018)}
+  .gefi-eyebrow{margin:0 0 10px;color:#86a7d2;font-size:9px;font-weight:800;letter-spacing:.15em}.gefi-welcome h2{font-size:31px!important;font-weight:680;letter-spacing:-.045em}.gefi-welcome-copy{max-width:52ch;margin:9px 0 0;color:#9cadc1;font-size:11px;line-height:1.6}
+  .gefi-welcome-actions{position:relative;z-index:2;display:flex;align-items:center;gap:10px}.gefi-welcome-actions>span{display:flex;align-items:center;gap:7px;padding:9px 11px;border:1px solid rgb(255 255 255/.12);border-radius:8px;background:rgb(255 255 255/.055);color:#aebccc;font-size:9px;font-weight:700}.gefi-welcome-actions>span i{width:6px;height:6px;border-radius:50%;background:#6b7787}.gefi-welcome-actions>span.online i{background:#56c59a;box-shadow:0 0 0 4px rgb(86 197 154/.12)}.gefi-welcome-actions>button{min-height:36px;padding:0 14px;border:1px solid rgb(255 255 255/.88);border-radius:8px;background:#f8fafc;color:#102038;font-size:9px;font-weight:800}
+  .gefi-finance-grid{display:grid!important;grid-template-columns:repeat(12,minmax(0,1fr))!important;gap:10px!important}.gefi-finance-grid>.gefi-kpi{min-height:116px;padding:15px 16px!important;border:1px solid var(--gf-line)!important;border-radius:12px!important;background:var(--gf-surface)!important;box-shadow:none!important}
+  .gefi-finance-grid>.gefi-kpi-1{grid-column:span 4;min-height:150px;background:var(--gf-navy)!important;border-color:var(--gf-navy)!important;color:#fff}.gefi-finance-grid>.gefi-kpi-2,.gefi-finance-grid>.gefi-kpi-3{grid-column:span 2}.gefi-finance-grid>.gefi-kpi-4,.gefi-finance-grid>.gefi-kpi-5,.gefi-finance-grid>.gefi-kpi-6{grid-column:span 2}.gefi-finance-grid>.gefi-kpi-investment{grid-column:span 2;min-height:150px!important}
+  .gefi-finance-grid>.gefi-kpi-1 p:first-child{color:#8ea1b8!important}.gefi-finance-grid>.gefi-kpi-1 p:nth-child(2){margin-top:11px!important;color:#fff!important;font-family:"Manrope GEFI",sans-serif!important;font-size:28px!important;font-weight:690!important;letter-spacing:-.05em!important}.gefi-finance-grid>.gefi-kpi p:first-child{color:#7a8491!important;font-size:8px!important;letter-spacing:.11em!important}.gefi-finance-grid>.gefi-kpi p:nth-child(2){margin-top:8px!important;font-family:"Manrope GEFI",sans-serif!important;font-size:18px!important;font-weight:720!important;letter-spacing:-.035em!important}.gefi-finance-grid>.gefi-kpi:hover{border-color:#aeb8c5!important;transform:translateY(-2px);box-shadow:0 10px 24px rgb(15 23 42/.055)!important}
+  .gefi-command-row{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:10px;margin-bottom:24px}.gefi-command-row>div{min-width:0}.gefi-command-row .gefi-smart-entry{height:100%;margin:0!important;border:1px solid #ccd5df!important;border-radius:12px!important;background:#fff!important;box-shadow:none!important}.gefi-command-row>button{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:18px;border:1px solid var(--gf-line);border-radius:12px;background:#fff;text-align:left}.gefi-command-row>button span{color:#7a8491;font-size:8px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}.gefi-command-row>button strong{margin-top:7px;color:#172033;font-size:18px;letter-spacing:-.035em}.gefi-command-row>button small{margin-top:5px;color:#3157d5;font-size:8px;font-weight:750}
+  .gefi-main>.grid.lg\:grid-cols-12{gap:14px!important}.gefi-panel,.gefi-main>section:not(.gefi-kpi-grid),.gefi-main>div.mt-6>section,.gefi-main>.grid section{border-color:var(--gf-line)!important;border-radius:12px!important;box-shadow:none!important}.gefi-main h3{color:#182231;font-weight:760;letter-spacing:-.02em}.gefi-main table thead{background:#f6f7f8;color:#798390;text-transform:uppercase;letter-spacing:.08em}.gefi-main table th{font-size:8px;font-weight:800}.gefi-main table tbody tr:hover{background:#f8f9fa}.gefi-main input,.gefi-main select,.gefi-main textarea{border-color:#dfe3e8!important;border-radius:8px!important;background:#f8f9fa!important}.gefi-main button.bg-blue-600{background:var(--gf-navy)!important}.gefi-shell>footer,.gefi-desktop-workspace>footer{border-color:#dde2e7!important;background:#fff!important}
+  .dark body,.dark .gefi-shell{--gf-ink:#eff3f8;--gf-muted:#8e9bab;--gf-line:#283441;--gf-paper:#090e14;--gf-surface:#111821;background:var(--gf-paper)!important;color:var(--gf-ink)}.dark .gefi-header{border-color:#26313e;background:rgb(12 18 27/.92)}.dark .gefi-header-period,.dark .gefi-account-button:hover,.dark .gefi-header-actions>button{border-color:#2b3643!important;background:#111923!important;color:#aeb8c4}.dark .gefi-welcome{border-color:#263c59!important;background:linear-gradient(118deg,#0d1827,#13243a 65%,#18304d)!important}.dark .gefi-finance-grid>.gefi-kpi,.dark .gefi-command-row>button,.dark .gefi-command-row .gefi-smart-entry,.dark .gefi-panel,.dark .gefi-main>section:not(.gefi-kpi-grid),.dark .gefi-main>div.mt-6>section,.dark .gefi-main>.grid section{border-color:var(--gf-line)!important;background:var(--gf-surface)!important}.dark .gefi-finance-grid>.gefi-kpi-1{background:#162238!important;border-color:#263a59!important}.dark .gefi-command-row>button strong,.dark .gefi-main h3{color:#edf2f7}.dark .gefi-main table thead{background:#0d131b}.dark .gefi-main table tbody tr:hover{background:#141d27}.dark .gefi-main input,.dark .gefi-main select,.dark .gefi-main textarea{border-color:#2b3744!important;background:#0c1219!important;color:#edf2f7!important}.dark .gefi-shell>footer,.dark .gefi-desktop-workspace>footer{border-color:#26313e!important;background:#0d141d!important}
+}
+@media (min-width:768px) and (max-width:1180px){.gefi-finance-grid>.gefi-kpi-1{grid-column:span 6}.gefi-finance-grid>.gefi-kpi-2,.gefi-finance-grid>.gefi-kpi-3,.gefi-finance-grid>.gefi-kpi-investment{grid-column:span 2}.gefi-finance-grid>.gefi-kpi-4,.gefi-finance-grid>.gefi-kpi-5,.gefi-finance-grid>.gefi-kpi-6{grid-column:span 4}.gefi-command-row{grid-template-columns:1fr}}
+
+/* Settings viewport containment: long sections scroll inside the dialog. */
+@media (min-width:761px){
+  .gefi-settings-workspace{min-height:0;overflow:hidden}
+  .gefi-settings-sidebar{min-height:0;overscroll-behavior:contain}
+  .gefi-settings-main{height:100%;min-height:0;overflow:hidden}
+  .gefi-settings-section-head{min-height:0}
+  .gefi-settings-section-body{min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-bottom:32px}
+  .gefi-settings-footer{position:relative;z-index:2;flex:0 0 auto}
+}
+@media (min-width:761px) and (max-height:800px){
+  .gefi-settings-topbar{height:64px}
+  .gefi-settings-workspace{height:calc(100% - 64px)}
+  .gefi-settings-sidebar{padding-block:12px}
+  .gefi-settings-sidebar-intro{padding:0 10px 6px}
+  .gefi-settings-sidebar-intro p{display:none}
+  .gefi-settings-sidebar nav{margin-top:6px}
+  .gefi-settings-sidebar nav>small{margin-bottom:4px}
+  .gefi-settings-sidebar nav>button{min-height:46px;padding-block:4px}
+}
+
+/* Scrollbars follow the active theme instead of keeping the browser's white track. */
+html{scrollbar-width:thin;scrollbar-color:#98a3af #eef0f3}
+html.dark{color-scheme:dark;scrollbar-color:#465466 #0a0f15}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:#eef0f3}
+::-webkit-scrollbar-thumb{border:2px solid #eef0f3;border-radius:999px;background:#98a3af}
+::-webkit-scrollbar-thumb:hover{background:#74808d}
+.dark ::-webkit-scrollbar-track{background:#0a0f15}
+.dark ::-webkit-scrollbar-thumb{border-color:#0a0f15;background:#465466}
+.dark ::-webkit-scrollbar-thumb:hover{background:#607087}
+.gefi-settings-sidebar,.gefi-settings-section-body{scrollbar-width:thin;scrollbar-color:#98a3af transparent}
+.dark .gefi-settings-sidebar,.dark .gefi-settings-section-body{scrollbar-color:#465466 transparent}
+.gefi-settings-sidebar::-webkit-scrollbar-track,.gefi-settings-section-body::-webkit-scrollbar-track{background:transparent}
+.dark .gefi-settings-sidebar::-webkit-scrollbar-track,.dark .gefi-settings-section-body::-webkit-scrollbar-track{background:transparent}
