@@ -42,6 +42,23 @@ export interface IolInvestmentSnapshot {
   updatedAt: number;
   positions: IolPositionSnapshot[];
 }
+export interface MonthlyClosure {
+  id: string;
+  period: string;
+  closedAt: number;
+  currency: string;
+  income: number;
+  expense: number;
+  invested: number;
+  maxExpense: number;
+  closingBank: number;
+  closingCash: number;
+  closingInvestments: number;
+  closingSavings: number;
+  closingPatrimony: number;
+  emailStatus?: 'pending' | 'sent' | 'skipped' | 'failed';
+  emailSentAt?: number;
+}
 export interface UserSettings { darkMode: boolean; hideBalances: boolean; monedaBase: string; monedas: string[]; categorias: string[]; widgets: string[]; quickLinks: QuickLink[]; showSavings?: boolean; onboardingCompleted?: boolean; currencySetupCompleted?: boolean; language?: 'es' | 'en'; budgets?: Record<string, number>; savingsGoals?: SavingsGoal[]; financialPlans?: FinancialPlan[]; fontScale?: 'normal' | 'large' | 'extraLarge'; investmentPlatforms?: string[]; investmentBalanceOverrides?: Record<string, number>; paymentReminders?: PaymentReminder[]; reservedFunds?: ReservedFund[]; monthlyEmailSummary?: boolean; paymentEmailReminders?: boolean; }
 
 export interface MonthSummary {

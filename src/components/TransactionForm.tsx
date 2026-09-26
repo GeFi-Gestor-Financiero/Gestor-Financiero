@@ -178,8 +178,8 @@ export default function TransactionForm({ onAddTransaction, selectedMonth, selec
               <option value="Gasto" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Gasto</option>
               <option value="Inversion" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Inversión</option>
               <option value="Ahorro" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Ahorro</option>
-              <option value="Ef+" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Ef+ (Efectivo)</option>
-              <option value="Ef-" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Ef- (Efectivo)</option>
+              <option value="Ef+" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Sumar efectivo</option>
+              <option value="Ef-" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">Restar efectivo</option>
               <option value="Transferencia">Transferencia entre cuenta y efectivo</option>
               <option value="Prestamo">Préstamo</option>
             </select>
