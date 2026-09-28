@@ -308,28 +308,38 @@ function ProfileScreen({ userName, userEmail, userPhotoURL, settings, accounts, 
 
   if(panel==='account')return <main className="mc-screen mc-subpage"><header className="mc-subpage-head"><button onClick={()=>setPanel(null)} aria-label="Volver"><ArrowLeft size={20}/></button><div><p>PERFIL</p><h1>Seguridad de la cuenta</h1></div></header><section className="mc-account-identity">{userPhotoURL?<img src={userPhotoURL} alt={`Foto de ${userName}`} referrerPolicy="no-referrer"/>:<div>{userName.trim().charAt(0).toUpperCase()}</div>}<strong>{userName}</strong><small>{userEmail}</small></section><section className="mc-settings-modern"><button onClick={async()=>{await onResetPassword();setStatus('Te enviamos un correo para cambiar tu contraseña.')}}><span className="mc-setting-icon"><KeyRound size={18}/></span><div><strong>Cambiar contraseña</strong><small>Recibí un enlace seguro en tu correo</small></div><ChevronRight size={18}/></button></section><h3 className="mc-settings-heading">Zona de riesgo</h3><section className="mc-danger-zone"><button onClick={()=>setRiskAction('reset')}><strong>Restablecer datos</strong><small>Borra movimientos y configuraciones, pero conserva la cuenta.</small></button><button onClick={()=>setRiskAction('delete')}><strong>Eliminar cuenta</strong><small>Borra permanentemente la cuenta y todos sus datos.</small></button></section>{status&&<p className="mc-status-message">{status}</p>}{riskAction&&<div className="mc-sheet-backdrop"><div className="mc-confirm"><span><Trash2 size={20}/></span><h3>{riskAction==='delete'?'Eliminar cuenta':'Restablecer datos'}</h3><p>{riskAction==='delete'?'No podrás recuperar la cuenta ni su información.':'Todos tus movimientos y ajustes se eliminarán.'}</p><button className="mc-submit" onClick={async()=>{if(riskAction==='delete')await onDeleteUserAccount();else{await onResetData();setRiskAction(null);setStatus('Tus datos fueron restablecidos.')}}}>{riskAction==='delete'?'Eliminar definitivamente':'Restablecer todo'}</button><button className="mc-detail" onClick={()=>setRiskAction(null)}>Cancelar</button></div></div>}</main>;
 
-  return <main className="mc-screen">
-    <Topbar eyebrow="CUENTA Y PREFERENCIAS" title="Perfil"/>
-    <button className="mc-profile-card" onClick={()=>setPanel('account')}>{userPhotoURL?<img src={userPhotoURL} alt={`Foto de ${userName}`} referrerPolicy="no-referrer"/>:<div>{userName.trim().charAt(0).toUpperCase()}</div>}<span><strong>{userName}</strong><small>{userEmail||'Cuenta sincronizada con GEFI'}</small></span><ChevronRight size={19}/></button>
-    <h3 className="mc-settings-heading">Privacidad y apariencia</h3>
-    <section className="mc-settings-modern">
-      <button onClick={()=>void onSaveSettings({...settings,darkMode:!settings.darkMode})}><span className="mc-setting-icon">{settings.darkMode?<Moon size={18}/>:<Sun size={18}/>}</span><div><strong>Modo oscuro</strong><small>Reduce el brillo de la interfaz</small></div><i className={settings.darkMode?'on':''}><em/></i></button>
+  return <main className="mc-screen mc-profile-screen">
+    <Topbar eyebrow="TU ESPACIO" title="Perfil"/>
+<button type="button" className="mc-profile-card" onClick={()=>setPanel('account')}>{userPhotoURL?<img src={userPhotoURL} alt={`Foto de ${userName}`} referrerPolicy="no-referrer"/>:<div>{userName.trim().charAt(0).toUpperCase()}</div>}<span><strong>{userName}</strong><small>{userEmail||'Cuenta sincronizada con GEFI'}</small></span><ChevronRight size={19}/></button>
+    <section className="mc-profile-group" aria-labelledby="mc-profile-finances">
+      <h2 id="mc-profile-finances" className="mc-settings-heading">Mis finanzas</h2>
+      <div className="mc-settings-modern ">
+        <button onClick={()=>setPanel('accounts')}><span className="mc-setting-icon"><WalletCards size={18}/></span><div><strong>Cuentas y categorías</strong><small>{accounts.length} {accounts.length===1?'cuenta':'cuentas'} · Categorías y plataformas</small></div><ChevronRight size={18}/></button>
+        <button onClick={()=>{selectCorrection('accounts');setPanel('correction')}}><span className="mc-setting-icon"><SlidersHorizontal size={18}/></span><div><strong>Corrección de saldos</strong><small>Ajustá cuenta, efectivo, inversiones o patrimonio</small></div><ChevronRight size={18}/></button>
+        {androidBridge&&<button onClick={()=>androidBridge.openNotificationAccessSettings()}><span className="mc-setting-icon"><BellRing size={18}/></span><div><strong>Movimientos de Mercado Pago</strong><small>{notificationAccess?'Gastos, ingresos y rendimientos activados':'Activá el acceso a notificaciones'}</small></div><i className={notificationAccess?'on':''}><em/></i></button>}
+      </div>
     </section>
-    <h3 className="mc-settings-heading">Preferencias</h3>
-    <section className="mc-settings-modern mc-settings-selects">
-      <label><span className="mc-setting-icon"><Globe2 size={18}/></span><div><strong>Idioma</strong><small>Idioma de toda la aplicación</small></div><select value={settings.language||'es'} onChange={event=>void onSaveSettings({...settings,language:event.target.value as 'es'|'en'})}><option value="es">ES</option><option value="en">EN</option></select></label>
-      <label><span className="mc-setting-icon"><CircleDollarSign size={18}/></span><div><strong>Moneda principal</strong><small>Usada en resúmenes y movimientos</small></div><select value={settings.monedaBase} onChange={event=>void onSaveSettings({...settings,monedaBase:event.target.value,monedas:[event.target.value,...settings.monedas.filter(item=>item!==event.target.value)]})}>{settings.monedas.map(item=><option key={item}>{item}</option>)}</select></label>
+    <section className="mc-profile-group" aria-labelledby="mc-profile-preferences">
+      <h2 id="mc-profile-preferences" className="mc-settings-heading">Preferencias</h2>
+      <div className="mc-settings-modern mc-settings-selects">
+        <button type="button" role="switch" aria-checked={settings.darkMode} aria-label="Modo oscuro" onClick={()=>void onSaveSettings({...settings,darkMode:!settings.darkMode})}><span className="mc-setting-icon">{settings.darkMode?<Moon size={18}/>:<Sun size={18}/>}</span><div><strong>Modo oscuro</strong><small>Reduce el brillo de la interfaz</small></div><i aria-hidden="true" className={settings.darkMode?'on':''}><em/></i></button>
+        <label><span className="mc-setting-icon"><Globe2 size={18}/></span><div><strong>Idioma</strong><small>Idioma de toda la aplicación</small></div><select value={settings.language||'es'} onChange={event=>void onSaveSettings({...settings,language:event.target.value as 'es'|'en'})}><option value="es">ES</option><option value="en">EN</option></select></label>
+        <label><span className="mc-setting-icon"><CircleDollarSign size={18}/></span><div><strong>Moneda principal</strong><small>Usada en resúmenes y movimientos</small></div><select value={settings.monedaBase} onChange={event=>void onSaveSettings({...settings,monedaBase:event.target.value,monedas:[event.target.value,...settings.monedas.filter(item=>item!==event.target.value)]})}>{settings.monedas.map(item=><option key={item}>{item}</option>)}</select></label>
+      </div>
     </section>
-    <h3 className="mc-settings-heading">Tus datos</h3>
-    <section className="mc-settings-modern">
-      {androidBridge&&<button onClick={()=>androidBridge.openNotificationAccessSettings()}><span className="mc-setting-icon"><BellRing size={18}/></span><div><strong>Movimientos de Mercado Pago</strong><small>{notificationAccess?'Gastos, ingresos y rendimientos activados':'Activá el acceso a notificaciones'}</small></div><i className={notificationAccess?'on':''}><em/></i></button>}
-      <button onClick={()=>setPanel('accounts')}><span className="mc-setting-icon"><WalletCards size={18}/></span><div><strong>Cuentas y configuración avanzada</strong><small>{accounts.length} {accounts.length===1?'cuenta configurada':'cuentas configuradas'}</small></div><ChevronRight size={18}/></button>
-      <button onClick={()=>{selectCorrection('accounts');setPanel('correction')}}><span className="mc-setting-icon"><SlidersHorizontal size={18}/></span><div><strong>Corrección de saldos</strong><small>Ajustá cuenta, efectivo, inversiones o patrimonio</small></div><ChevronRight size={18}/></button>
-      <button onClick={onExport}><span className="mc-setting-icon"><Download size={18}/></span><div><strong>Descargar respaldo</strong><small>Exportá todos tus datos en formato JSON</small></div><ChevronRight size={18}/></button>
+    <section className="mc-profile-group" aria-labelledby="mc-profile-data">
+      <h2 id="mc-profile-data" className="mc-settings-heading">Respaldo de datos</h2>
+      <div className="mc-settings-modern ">
+        <button onClick={onExport}><span className="mc-setting-icon"><Download size={18}/></span><div><strong>Descargar respaldo</strong><small>Guardá una copia de tus datos</small></div><ChevronRight size={18}/></button>
+      </div>
     </section>
-    <h3 className="mc-settings-heading">Ayuda</h3>
-    <section className="mc-settings-modern"><button type="button" onClick={onOpenSupport}><span className="mc-setting-icon"><Mail size={18}/></span><div><strong>Contactar a soporte</strong><small>Respuesta directa a tu correo</small></div><ChevronRight size={18}/></button><button onClick={()=>setPanel('help')}><span className="mc-setting-icon"><CircleHelp size={18}/></span><div><strong>Ayuda y preguntas frecuentes</strong><small>Consultá las funciones de GEFI</small></div><ChevronRight size={18}/></button><button onClick={()=>setPanel('policies')}><span className="mc-setting-icon"><FileText size={18}/></span><div><strong>Políticas de GEFI</strong><small>Privacidad, datos y seguridad</small></div><ChevronRight size={18}/></button></section>
-    <button className="mc-logout" onClick={onLogout}><LogOut size={17}/>Cerrar sesión</button>
+    <section className="mc-profile-group" aria-labelledby="mc-profile-help">
+      <h2 id="mc-profile-help" className="mc-settings-heading">Ayuda y privacidad</h2>
+      <div className="mc-settings-modern ">
+        <button type="button" onClick={onOpenSupport}><span className="mc-setting-icon"><Mail size={18}/></span><div><strong>Contactar a soporte</strong><small>Respuesta directa a tu correo</small></div><ChevronRight size={18}/></button><button onClick={()=>setPanel('help')}><span className="mc-setting-icon"><CircleHelp size={18}/></span><div><strong>Preguntas frecuentes</strong><small>Consultá las funciones de GEFI</small></div><ChevronRight size={18}/></button><button onClick={()=>setPanel('policies')}><span className="mc-setting-icon"><FileText size={18}/></span><div><strong>Privacidad y seguridad</strong><small>Privacidad, datos y seguridad</small></div><ChevronRight size={18}/></button>
+      </div>
+    </section>
+    <footer className="mc-profile-session"><button type="button" className="mc-logout" onClick={onLogout}><LogOut size={18}/>Cerrar sesión</button><p>GeFi · Tu gestor financiero</p></footer>
   </main>;
 }
 
