@@ -83,9 +83,19 @@ function HomeScreen({ navigate, userName, summary, transactions, accounts, loans
   const selectedLoanDetails=loans.filter(loan=>loan.persona.trim().toLowerCase()===loanDetailsPerson?.trim().toLowerCase()).sort((a,b)=>a.fecha.localeCompare(b.fecha));
   return <main className="mc-screen">
     <Topbar eyebrow="RESUMEN FINANCIERO" title={`${greeting}, ${userName.split(' ')[0]}`}/>
-    <section className="mc-balance">
-      <div className="mc-balance-label"><p>Patrimonio total</p><button type="button" onClick={()=>void onSaveSettings({...settings,hideBalances:!settings.hideBalances})} aria-label={settings.hideBalances?'Mostrar importes':'Ocultar importes'}>{settings.hideBalances?<Eye size={19}/>:<EyeOff size={19}/>}</button></div><h2>{settings.hideBalances?'••••••':money(summary.patrimonio,settings.monedaBase)}</h2>
-      <span>Datos sincronizados</span>
+    <section className="mc-balance" aria-label="Tarjeta de patrimonio total">
+      <div className="mc-card-top">
+        <strong className="mc-card-brand">GeFi</strong>
+        <div className="mc-card-chip" aria-hidden="true"><i/></div>
+      </div>
+      <div className="mc-card-amount">
+        <div className="mc-balance-label"><p>Patrimonio total</p><button type="button" onClick={()=>void onSaveSettings({...settings,hideBalances:!settings.hideBalances})} aria-label={settings.hideBalances?'Mostrar importes':'Ocultar importes'} aria-pressed={settings.hideBalances}>{settings.hideBalances?<Eye size={19}/>:<EyeOff size={19}/>}</button></div>
+        <h2>{settings.hideBalances?'••••••':money(summary.patrimonio,settings.monedaBase)}</h2>
+      </div>
+      <div className="mc-card-footer">
+        <div className="mc-card-holder"><small>Titular</small><strong>{userName}</strong></div>
+        <div className="mc-card-currency"><small>Moneda</small><strong>{settings.monedaBase}</strong></div>
+      </div>
     </section>
 
     <div className="mc-overview-grid">
