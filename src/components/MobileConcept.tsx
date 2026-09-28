@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowDownLeft, ArrowRight, ArrowUpRight, CalendarDays,
-  ChevronRight, CircleDollarSign, HandCoins, Home, Landmark, LineChart,
+  ChevronLeft, ChevronRight, CircleDollarSign, HandCoins, Home, Landmark, LineChart,
   Plus, Search, ShieldCheck, SlidersHorizontal, Target,
   UserRound, WalletCards, Trash2, Check, X, Eye, EyeOff, Moon, Sun,
   LogOut, Download, Globe2, CircleHelp, Mail, Sparkles, KeyRound, FileText, Pencil, BellRing,
@@ -131,7 +131,7 @@ function HomeScreen({ navigate, userName, summary, transactions, accounts, loans
   </main>;
 }
 
-function ActivityScreen({ summary, transactions, accounts, loans, settings, onDeleteTransaction, onEditTransaction, onAddLoan, onRepayPerson }: Pick<MobileConceptProps,'summary'|'transactions'|'accounts'|'loans'|'settings'|'onDeleteTransaction'|'onEditTransaction'|'onAddLoan'|'onRepayPerson'>) {
+function ActivityScreen({ historyTransactions, accounts, loans, settings, onDeleteTransaction, onEditTransaction, onAddLoan, onRepayPerson }: Pick<MobileConceptProps,'historyTransactions'|'accounts'|'loans'|'settings'|'onDeleteTransaction'|'onEditTransaction'|'onAddLoan'|'onRepayPerson'>) {
   const [query,setQuery]=useState('');
   const [selected,setSelected]=useState<string[]>([]);
   const [editing,setEditing]=useState<Transaction|null>(null);
@@ -145,6 +145,21 @@ function ActivityScreen({ summary, transactions, accounts, loans, settings, onDe
   const [loanMotive,setLoanMotive]=useState('');
   const [repaymentAccount,setRepaymentAccount]=useState(accounts[0]?.id||'');
   const [loanError,setLoanError]=useState('');
+  const now=new Date();
+  const currentPeriod=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const [period,setPeriod]=useState(currentPeriod);
+  const changePeriod=(value:string)=>{if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(value)||value<'0001-01')return;setPeriod(value);setSelected([]);setConfirmDelete(false);setQuery('')};
+  const shiftPeriod=(offset:number)=>{const [year,month]=period.split('-').map(Number);const index=year*12+month-1+offset;if(index<12||index>119999)return;changePeriod(`${String(Math.floor(index/12)).padStart(4,'0')}-${String(index%12+1).padStart(2,'0')}`)};
+  const periodLabel=new Intl.DateTimeFormat(settings.language==='en'?'en-US':'es-AR',{month:'long',year:'numeric'}).format(new Date(`${period}-01T12:00:00`));
+  const transactions=historyTransactions.filter(item=>!item.deletedAt&&item.fecha.slice(0,7)===period).sort((a,b)=>b.fecha.localeCompare(a.fecha)||(b.createdAt||0)-(a.createdAt||0));
+  const summary=transactions.reduce((totals,item)=>{
+    const correction=item.categoriaDetalle==='Corrección de saldo'||/^Corrección de\s/i.test(item.motivo||'');
+    if(correction)return totals;
+    const value=item.monto*(item.moneda==='ARS'||!item.moneda?1:Number(item.cotizacion||1));
+    if(item.categoria==='Ingreso'||item.categoria==='Ef+')totals.income+=value;
+    if(item.categoria==='Gasto'||item.categoria==='Ef-'||item.categoria==='Gasto efectivo')totals.expense+=value;
+    return totals;
+  },{income:0,expense:0});
   const filtered=transactions.filter(item=>`${item.motivo} ${item.categoria} ${item.categoriaDetalle}`.toLowerCase().includes(query.toLowerCase()));
   const toggle=(id:string)=>setSelected(current=>current.includes(id)?current.filter(item=>item!==id):[...current,id]);
   const removeSelected=async()=>{for(const id of selected)await onDeleteTransaction(id);setSelected([]);setConfirmDelete(false)};
@@ -156,7 +171,15 @@ function ActivityScreen({ summary, transactions, accounts, loans, settings, onDe
   const openLoanAction=(person:string,mode:'add'|'repay')=>{setLoanIsNew(false);setLoanPerson(person);setLoanMode(mode);setLoanError('');setLoanAmount('');setLoanMotive('');setRepaymentAccount(accounts[0]?.id||'')};
   return <main className="mc-screen">
     <Topbar eyebrow="MOVIMIENTOS REALES" title="Actividad"/>
-    <label className="mc-search"><Search size={18}/><input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Buscar movimientos"/><SlidersHorizontal size={18}/></label>
+    <section className="mc-activity-period" aria-label="Período de actividad">
+      <div className="mc-period-navigation">
+        <button type="button" onClick={()=>shiftPeriod(-1)} disabled={period==='0001-01'} aria-label="Mes anterior"><ChevronLeft size={20}/></button>
+        <label className="mc-period-picker"><span>Mes de actividad</span><input type="month" aria-label="Mes de actividad" min="0001-01" max="9999-12" value={period} onChange={event=>changePeriod(event.target.value)}/></label>
+        <button type="button" onClick={()=>shiftPeriod(1)} disabled={period==='9999-12'} aria-label="Mes siguiente"><ChevronRight size={20}/></button>
+      </div>
+      <div className="mc-period-caption"><p aria-live="polite">{periodLabel} · {transactions.length} {transactions.length===1?'movimiento':'movimientos'}</p><button type="button" disabled={period===currentPeriod} onClick={()=>changePeriod(currentPeriod)}>Mes actual</button></div>
+    </section>
+    <label className="mc-search"><Search size={18}/><input value={query} onChange={event=>{setQuery(event.target.value);setSelected([])}} aria-label="Buscar movimientos del mes" placeholder="Buscar en este mes"/><SlidersHorizontal size={18}/></label>
     <div className="mc-stats">
       <article><small>Ingresos</small><strong className="positive">{settings.hideBalances?'••••':money(summary.income,settings.monedaBase)}</strong></article>
       <article><small>Gastos</small><strong>{settings.hideBalances?'••••':money(summary.expense,settings.monedaBase)}</strong></article>
@@ -170,8 +193,8 @@ function ActivityScreen({ summary, transactions, accounts, loans, settings, onDe
       {selectedGroup&&<div className="mc-activity-loan-detail"><div className="mc-loan-details">{selectedGroup.loans.sort((a,b)=>a.fecha.localeCompare(b.fecha)).map(loan=>{const paid=(loan.pagos||[]).reduce((sum,payment)=>sum+Number(payment.monto||0),0),pending=remaining(loan);return <article key={loan.id}><div><time>{loan.fecha}</time><strong>{loan.motivo||'Sin detalle'}</strong></div><dl><div><dt>Prestado</dt><dd>{settings.hideBalances?'••••':money(loan.monto,loan.moneda||settings.monedaBase)}</dd></div><div><dt>Devuelto</dt><dd className="paid">{settings.hideBalances?'••••':money(paid,loan.moneda||settings.monedaBase)}</dd></div><div><dt>Estado</dt><dd className={pending<=0?'paid':''}>{pending<=0?'Pagado':'Pendiente'}</dd></div></dl></article>})}</div><div className="mc-loan-detail-actions"><button type="button" onClick={()=>openLoanAction(selectedGroup.person,'add')}>Agregar deuda</button><button type="button" className="primary" disabled={selectedGroup.total<=0} onClick={()=>openLoanAction(selectedGroup.person,'repay')}>Registrar devolución</button></div></div>}
     </section>}
     <section className="mc-section">
-      <div className="mc-section-title"><h3>{selected.length?`${selected.length} seleccionados`:'Todos los movimientos'}</h3><div className="mc-inline-actions"><button onClick={()=>setSelected(selected.length===filtered.length?[]:filtered.map(item=>item.id))}>{selected.length===filtered.length?'Cancelar':'Seleccionar todo'}</button>{selected.length>0&&<button className="danger" onClick={()=>setConfirmDelete(true)}><Trash2 size={15}/></button>}</div></div>
-      {filtered.length?<div className="mc-movement-list">{filtered.map(transaction=>{const positive=['Ingreso','Ef+','Desinversion'].includes(transaction.categoria);const checked=selected.includes(transaction.id);return <article key={transaction.id} className={checked?'selected':''}><button className="mc-check" onClick={()=>toggle(transaction.id)} aria-label={`Seleccionar ${transaction.motivo||transaction.categoria}`}>{checked?<Check size={15}/>:null}</button><button className="mc-movement-main" onClick={()=>setEditing(transaction)}><span><strong>{transaction.motivo||transaction.categoria}</strong><small>{transaction.categoriaDetalle||transaction.categoria} · {transaction.fecha}</small></span><b className={positive?'positive':''}>{settings.hideBalances?'••••':`${positive?'+':'-'}${money(transaction.monto,transaction.moneda||settings.monedaBase)}`}</b></button></article>})}</div>:<div className="mc-empty-state">No encontramos movimientos con esa búsqueda.</div>}
+      <div className="mc-section-title"><h3>{selected.length?`${selected.length} seleccionados`:'Movimientos del mes'}</h3><div className="mc-inline-actions"><button onClick={()=>setSelected(selected.length===filtered.length?[]:filtered.map(item=>item.id))}>{selected.length===filtered.length?'Cancelar':'Seleccionar todo'}</button>{selected.length>0&&<button className="danger" onClick={()=>setConfirmDelete(true)}><Trash2 size={15}/></button>}</div></div>
+      {filtered.length?<div className="mc-movement-list">{filtered.map(transaction=>{const positive=['Ingreso','Ef+','Desinversion'].includes(transaction.categoria);const checked=selected.includes(transaction.id);return <article key={transaction.id} className={checked?'selected':''}><button className="mc-check" onClick={()=>toggle(transaction.id)} aria-label={`Seleccionar ${transaction.motivo||transaction.categoria}`}>{checked?<Check size={15}/>:null}</button><button className="mc-movement-main" onClick={()=>setEditing(transaction)}><span><strong>{transaction.motivo||transaction.categoria}</strong><small>{transaction.categoriaDetalle||transaction.categoria} · {transaction.fecha}</small></span><b className={positive?'positive':''}>{settings.hideBalances?'••••':`${positive?'+':'-'}${money(transaction.monto,transaction.moneda||settings.monedaBase)}`}</b></button></article>})}</div>:<div className="mc-empty-state">{query?'No encontramos movimientos con esa búsqueda en este mes.':`No hay movimientos registrados en ${periodLabel}.`}</div>}
     </section>
     {editing&&<div className="mc-sheet-backdrop" onClick={()=>setEditing(null)}><form className="mc-sheet" onClick={event=>event.stopPropagation()} onSubmit={async event=>{event.preventDefault();await onEditTransaction(editing);setEditing(null)}}><div className="mc-sheet-head"><h3>Editar movimiento</h3><button type="button" onClick={()=>setEditing(null)}><X size={19}/></button></div><label>Fecha<input type="date" value={editing.fecha} onChange={event=>setEditing({...editing,fecha:event.target.value})}/></label><label>Importe<input type="number" min="0.01" step="any" value={editing.monto} onChange={event=>setEditing({...editing,monto:Number(event.target.value)})}/></label><label>Detalle<input value={editing.motivo||''} onChange={event=>setEditing({...editing,motivo:event.target.value})}/></label><button className="mc-submit">Guardar cambios</button></form></div>}
     {confirmDelete&&<div className="mc-sheet-backdrop"><div className="mc-confirm"><span><Trash2 size={20}/></span><h3>Eliminar movimientos</h3><p>Los movimientos seleccionados irán a la papelera y podrán recuperarse durante 30 días.</p><button className="mc-submit" onClick={removeSelected}>Eliminar {selected.length}</button><button className="mc-detail" onClick={()=>setConfirmDelete(false)}>Cancelar</button></div></div>}
