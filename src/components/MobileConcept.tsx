@@ -5,7 +5,7 @@ import {
   ArrowDownLeft, ArrowRight, ArrowUpRight, CalendarDays,
   ChevronLeft, ChevronRight, CircleDollarSign, HandCoins, Home, Landmark, LineChart,
   Plus, Search, ShieldCheck, SlidersHorizontal, Target,
-  UserRound, WalletCards, Trash2, Check, X, Eye, EyeOff, Moon, Sun,
+  UserRound, WalletCards, Trash2, Check, X, EyeOff, Moon, Sun,
   LogOut, Download, Globe2, CircleHelp, Mail, Sparkles, KeyRound, FileText, Pencil, BellRing,
 } from 'lucide-react';
 import { Account, Loan, Transaction, UserSettings } from '../types';
@@ -85,22 +85,31 @@ function HomeScreen({ navigate, userName, summary, transactions, accounts, loans
   const cardRotateX=useSpring(0,{stiffness:240,damping:22}),cardRotateY=useSpring(0,{stiffness:240,damping:22});
   const setCardTilt=(event:PointerEvent<HTMLElement>)=>{if(event.pointerType==='mouse'&&event.buttons===0)return;const bounds=event.currentTarget.getBoundingClientRect(),x=(event.clientX-bounds.left)/bounds.width-.5,y=(event.clientY-bounds.top)/bounds.height-.5;cardRotateX.set(-y*11);cardRotateY.set(x*14);event.currentTarget.style.setProperty('--mc-card-shine-x',`${(x*92).toFixed(1)}%`);event.currentTarget.classList.add('mc-balance-tilting')};
   const resetCardTilt=(event:PointerEvent<HTMLElement>)=>{cardRotateX.set(0);cardRotateY.set(0);event.currentTarget.classList.remove('mc-balance-tilting');event.currentTarget.style.removeProperty('--mc-card-shine-x')};
+  const toggleCardPrivacy=()=>void onSaveSettings({...settings,hideBalances:!settings.hideBalances});
+  const resetCardMotion=()=>{cardRotateX.set(0);cardRotateY.set(0)};
   return <main className="mc-screen">
     <Topbar eyebrow="RESUMEN FINANCIERO" title={`${greeting}, ${userName.split(' ')[0]}`}/>
-    <motion.section className="mc-balance" aria-label="Tarjeta de patrimonio total" style={{rotateX:cardRotateX,rotateY:cardRotateY,transformPerspective:900}} onPointerDown={setCardTilt} onPointerMove={setCardTilt} onPointerUp={resetCardTilt} onPointerCancel={resetCardTilt} onPointerLeave={resetCardTilt}>
-      <div className="mc-card-top">
+    <motion.div className="mc-balance-stage" aria-label="Tarjeta de patrimonio total" drag="x" dragConstraints={{left:0,right:0}} dragElastic={.14} animate={{rotateY:settings.hideBalances?180:0}} transition={{duration:.18,ease:'easeOut'}} style={{transformPerspective:1000}} onDragEnd={(_,info)=>{resetCardMotion();if(Math.abs(info.offset.x)>48||Math.abs(info.velocity.x)>420)toggleCardPrivacy()}}>
+      <motion.section className="mc-balance mc-balance-front" aria-hidden={settings.hideBalances} style={{rotateX:cardRotateX,rotateY:cardRotateY}} onPointerDown={setCardTilt} onPointerMove={setCardTilt} onPointerUp={resetCardTilt} onPointerCancel={resetCardTilt} onPointerLeave={resetCardTilt}>
+        <div className="mc-card-top">
+          <strong className="mc-card-brand">GeFi</strong>
+          <div className="mc-card-chip" aria-hidden="true"><i/></div>
+        </div>
+        <div className="mc-card-amount">
+          <div className="mc-balance-label"><p>Patrimonio total</p><button type="button" onPointerDown={event=>event.stopPropagation()} onClick={toggleCardPrivacy} aria-label="Ocultar importes" aria-pressed={settings.hideBalances}><EyeOff size={19}/></button></div>
+          <h2>{money(summary.patrimonio,settings.monedaBase)}</h2>
+        </div>
+        <div className="mc-card-footer">
+          <div className="mc-card-holder"><small>Titular</small><strong>{userName}</strong></div>
+          <div className="mc-card-currency"><small>Moneda</small><strong>{settings.monedaBase}</strong></div>
+        </div>
+      </motion.section>
+      <section className="mc-balance mc-balance-back" aria-hidden={!settings.hideBalances}>
         <strong className="mc-card-brand">GeFi</strong>
-        <div className="mc-card-chip" aria-hidden="true"><i/></div>
-      </div>
-      <div className="mc-card-amount">
-        <div className="mc-balance-label"><p>Patrimonio total</p><button type="button" onClick={()=>void onSaveSettings({...settings,hideBalances:!settings.hideBalances})} aria-label={settings.hideBalances?'Mostrar importes':'Ocultar importes'} aria-pressed={settings.hideBalances}>{settings.hideBalances?<Eye size={19}/>:<EyeOff size={19}/>}</button></div>
-        <h2>{settings.hideBalances?'••••••':money(summary.patrimonio,settings.monedaBase)}</h2>
-      </div>
-      <div className="mc-card-footer">
-        <div className="mc-card-holder"><small>Titular</small><strong>{userName}</strong></div>
-        <div className="mc-card-currency"><small>Moneda</small><strong>{settings.monedaBase}</strong></div>
-      </div>
-    </motion.section>
+        <div className="mc-card-private-status"><span><EyeOff size={30} aria-hidden="true"/></span><h2>Gestor Financiero</h2><p>Datos ocultos</p><small>Deslizá para mostrar</small></div>
+        <span className="mc-card-back-hint">Privacidad activada</span>
+      </section>
+    </motion.div>
 
     <div className="mc-overview-grid">
       <button type="button" className="primary mc-overview-action" onClick={()=>setReserveOpen(true)}><Landmark size={18}/><p>Disponible en cuenta</p><strong>{settings.hideBalances?'••••':money(summary.accounts,settings.monedaBase)}</strong><small>{settings.hideBalances?'Reservado: ••••':`Reservado: ${money(summary.reserved,settings.monedaBase)}`}</small></button>
