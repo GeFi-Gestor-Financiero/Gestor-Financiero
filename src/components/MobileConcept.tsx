@@ -83,13 +83,15 @@ function HomeScreen({ navigate, userName, summary, transactions, accounts, loans
   const selectedDebt=loanGroups.find(group=>group.person===loanPerson)?.total||0;
   const selectedLoanDetails=loans.filter(loan=>loan.persona.trim().toLowerCase()===loanDetailsPerson?.trim().toLowerCase()).sort((a,b)=>a.fecha.localeCompare(b.fecha));
   const cardRotateX=useSpring(0,{stiffness:240,damping:22}),cardRotateY=useSpring(0,{stiffness:240,damping:22});
+  const lastCardTap=useRef(0);
   const setCardTilt=(event:PointerEvent<HTMLElement>)=>{if(event.pointerType==='mouse'&&event.buttons===0)return;const bounds=event.currentTarget.getBoundingClientRect(),x=(event.clientX-bounds.left)/bounds.width-.5,y=(event.clientY-bounds.top)/bounds.height-.5;cardRotateX.set(-y*11);cardRotateY.set(x*14);event.currentTarget.style.setProperty('--mc-card-shine-x',`${(x*92).toFixed(1)}%`);event.currentTarget.classList.add('mc-balance-tilting')};
   const resetCardTilt=(event:PointerEvent<HTMLElement>)=>{cardRotateX.set(0);cardRotateY.set(0);event.currentTarget.classList.remove('mc-balance-tilting');event.currentTarget.style.removeProperty('--mc-card-shine-x')};
   const toggleCardPrivacy=()=>void onSaveSettings({...settings,hideBalances:!settings.hideBalances});
   const resetCardMotion=()=>{cardRotateX.set(0);cardRotateY.set(0)};
+  const handleCardTap=()=>{const time=Date.now();if(time-lastCardTap.current<320){lastCardTap.current=0;toggleCardPrivacy();return}lastCardTap.current=time};
   return <main className="mc-screen">
     <Topbar eyebrow="RESUMEN FINANCIERO" title={`${greeting}, ${userName.split(' ')[0]}`}/>
-    <motion.div className="mc-balance-stage" aria-label="Tarjeta de patrimonio total" drag="x" dragConstraints={{left:0,right:0}} dragElastic={.14} animate={{rotateY:settings.hideBalances?180:0}} transition={{duration:.18,ease:'easeOut'}} style={{transformPerspective:1000}} onDragEnd={(_,info)=>{resetCardMotion();if(Math.abs(info.offset.x)>48||Math.abs(info.velocity.x)>420)toggleCardPrivacy()}}>
+    <motion.div className="mc-balance-stage" aria-label="Tarjeta de patrimonio total. Deslizá o tocá dos veces para ocultar o mostrar los importes." drag="x" dragConstraints={{left:0,right:0}} dragElastic={.14} animate={{rotateY:settings.hideBalances?180:0}} transition={{duration:.18,ease:'easeOut'}} style={{transformPerspective:1000}} onTap={handleCardTap} onDragEnd={(_,info)=>{resetCardMotion();if(Math.abs(info.offset.x)>48||Math.abs(info.velocity.x)>420)toggleCardPrivacy()}}>
       <motion.section className="mc-balance mc-balance-front" aria-hidden={settings.hideBalances} style={{rotateX:cardRotateX,rotateY:cardRotateY}} onPointerDown={setCardTilt} onPointerMove={setCardTilt} onPointerUp={resetCardTilt} onPointerCancel={resetCardTilt} onPointerLeave={resetCardTilt}>
         <div className="mc-card-top">
           <strong className="mc-card-brand">GeFi</strong>
