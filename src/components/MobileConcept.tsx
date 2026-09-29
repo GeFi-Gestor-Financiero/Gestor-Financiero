@@ -174,10 +174,11 @@ function ActivityScreen({ historyTransactions, accounts, loans, settings, onDele
     <section className="mc-activity-period" aria-label="Período de actividad">
       <div className="mc-period-navigation">
         <button type="button" onClick={()=>shiftPeriod(-1)} disabled={period==='0001-01'} aria-label="Mes anterior"><ChevronLeft size={20}/></button>
-        <label className="mc-period-picker"><span>Mes de actividad</span><input type="month" aria-label="Mes de actividad" min="0001-01" max="9999-12" value={period} onChange={event=>changePeriod(event.target.value)}/></label>
+        <label className="mc-period-picker"><input type="month" aria-label="Mes de actividad" min="0001-01" max="9999-12" value={period} onChange={event=>changePeriod(event.target.value)}/></label>
         <button type="button" onClick={()=>shiftPeriod(1)} disabled={period==='9999-12'} aria-label="Mes siguiente"><ChevronRight size={20}/></button>
+        <button className="mc-period-today" type="button" aria-label="Mes actual" disabled={period===currentPeriod} onClick={()=>changePeriod(currentPeriod)}>Actual</button>
       </div>
-      <div className="mc-period-caption"><p aria-live="polite">{periodLabel} · {transactions.length} {transactions.length===1?'movimiento':'movimientos'}</p><button type="button" disabled={period===currentPeriod} onClick={()=>changePeriod(currentPeriod)}>Mes actual</button></div>
+      <p className="sr-only" aria-live="polite">{periodLabel} · {transactions.length} {transactions.length===1?'movimiento':'movimientos'}</p>
     </section>
     <label className="mc-search"><Search size={18}/><input value={query} onChange={event=>{setQuery(event.target.value);setSelected([])}} aria-label="Buscar movimientos del mes" placeholder="Buscar en este mes"/><SlidersHorizontal size={18}/></label>
     <div className="mc-stats">
