@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import { motion, useSpring } from 'motion/react';
 import {
   ArrowLeft,
   ArrowDownLeft, ArrowRight, ArrowUpRight, CalendarDays,
@@ -81,11 +82,12 @@ function HomeScreen({ navigate, userName, summary, transactions, accounts, loans
   const loanGroups=[...loans.reduce((map,loan)=>{const key=loan.persona.trim().toLowerCase(),current=map.get(key)||{person:loan.persona,total:0};current.total+=remaining(loan);map.set(key,current);return map},new Map<string,{person:string;total:number}>()).values()].filter(group=>group.total>0);
   const selectedDebt=loanGroups.find(group=>group.person===loanPerson)?.total||0;
   const selectedLoanDetails=loans.filter(loan=>loan.persona.trim().toLowerCase()===loanDetailsPerson?.trim().toLowerCase()).sort((a,b)=>a.fecha.localeCompare(b.fecha));
-  const setCardTilt=(event:PointerEvent<HTMLElement>)=>{if(event.pointerType==='mouse'&&event.buttons===0)return;const bounds=event.currentTarget.getBoundingClientRect(),x=(event.clientX-bounds.left)/bounds.width-.5,y=(event.clientY-bounds.top)/bounds.height-.5;event.currentTarget.style.setProperty('--mc-card-rotate-x',`${(-y*5).toFixed(2)}deg`);event.currentTarget.style.setProperty('--mc-card-rotate-y',`${(x*7).toFixed(2)}deg`);event.currentTarget.style.setProperty('--mc-card-shine-x',`${(x*76).toFixed(1)}%`);event.currentTarget.classList.add('mc-balance-tilting')};
-  const resetCardTilt=(event:PointerEvent<HTMLElement>)=>{event.currentTarget.classList.remove('mc-balance-tilting');event.currentTarget.style.removeProperty('--mc-card-rotate-x');event.currentTarget.style.removeProperty('--mc-card-rotate-y');event.currentTarget.style.removeProperty('--mc-card-shine-x')};
+  const cardRotateX=useSpring(0,{stiffness:240,damping:22}),cardRotateY=useSpring(0,{stiffness:240,damping:22});
+  const setCardTilt=(event:PointerEvent<HTMLElement>)=>{if(event.pointerType==='mouse'&&event.buttons===0)return;const bounds=event.currentTarget.getBoundingClientRect(),x=(event.clientX-bounds.left)/bounds.width-.5,y=(event.clientY-bounds.top)/bounds.height-.5;cardRotateX.set(-y*11);cardRotateY.set(x*14);event.currentTarget.style.setProperty('--mc-card-shine-x',`${(x*92).toFixed(1)}%`);event.currentTarget.classList.add('mc-balance-tilting')};
+  const resetCardTilt=(event:PointerEvent<HTMLElement>)=>{cardRotateX.set(0);cardRotateY.set(0);event.currentTarget.classList.remove('mc-balance-tilting');event.currentTarget.style.removeProperty('--mc-card-shine-x')};
   return <main className="mc-screen">
     <Topbar eyebrow="RESUMEN FINANCIERO" title={`${greeting}, ${userName.split(' ')[0]}`}/>
-    <section className="mc-balance" aria-label="Tarjeta de patrimonio total" onPointerDown={setCardTilt} onPointerMove={setCardTilt} onPointerUp={resetCardTilt} onPointerCancel={resetCardTilt} onPointerLeave={resetCardTilt}>
+    <motion.section className="mc-balance" aria-label="Tarjeta de patrimonio total" style={{rotateX:cardRotateX,rotateY:cardRotateY,transformPerspective:900}} onPointerDown={setCardTilt} onPointerMove={setCardTilt} onPointerUp={resetCardTilt} onPointerCancel={resetCardTilt} onPointerLeave={resetCardTilt}>
       <div className="mc-card-top">
         <strong className="mc-card-brand">GeFi</strong>
         <div className="mc-card-chip" aria-hidden="true"><i/></div>
@@ -98,7 +100,7 @@ function HomeScreen({ navigate, userName, summary, transactions, accounts, loans
         <div className="mc-card-holder"><small>Titular</small><strong>{userName}</strong></div>
         <div className="mc-card-currency"><small>Moneda</small><strong>{settings.monedaBase}</strong></div>
       </div>
-    </section>
+    </motion.section>
 
     <div className="mc-overview-grid">
       <button type="button" className="primary mc-overview-action" onClick={()=>setReserveOpen(true)}><Landmark size={18}/><p>Disponible en cuenta</p><strong>{settings.hideBalances?'••••':money(summary.accounts,settings.monedaBase)}</strong><small>{settings.hideBalances?'Reservado: ••••':`Reservado: ${money(summary.reserved,settings.monedaBase)}`}</small></button>
