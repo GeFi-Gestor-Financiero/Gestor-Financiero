@@ -96,7 +96,7 @@ function HomeScreen({ navigate, userName, summary, transactions, accounts, loans
           <div className="mc-card-chip" aria-hidden="true"><i/></div>
         </div>
         <div className="mc-card-amount">
-          <div className="mc-balance-label"><p>Patrimonio total</p><button type="button" onPointerDown={event=>event.stopPropagation()} onClick={toggleCardPrivacy} aria-label="Ocultar importes" aria-pressed={settings.hideBalances}><EyeOff size={19}/></button></div>
+          <p className="mc-balance-title">Patrimonio total</p>
           <h2>{money(summary.patrimonio,settings.monedaBase)}</h2>
         </div>
         <div className="mc-card-footer">
