@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { browserLocalPersistence, getAuth, GoogleAuthProvider, setPersistence } from "firebase/auth";
 import { enableMultiTabIndexedDbPersistence, getFirestore } from "firebase/firestore";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import config from "../firebase-applet-config.json";
@@ -18,6 +18,12 @@ if (typeof window !== 'undefined' && window.location.hostname === 'gefi-gestor-f
   initializeAppCheck(app, { provider: new ReCaptchaEnterpriseProvider('6LeHWJ8tAAAAAKESoxjs71VrRD0P7JkSMQuB6Ouo'), isTokenAutoRefreshEnabled: true });
 }
 const auth = getAuth(app);
+// Persist the signed-in account in both the browser and Android WebView. The
+// same Firebase account therefore resolves to the same users/{uid} data path
+// on every device.
+if (typeof window !== 'undefined') {
+  void setPersistence(auth, browserLocalPersistence).catch(() => undefined);
+}
 // Keep regular sign-in least-privileged. Drive access is requested only when
 // the user explicitly opens the backup integration.
 const authProvider = new GoogleAuthProvider();
