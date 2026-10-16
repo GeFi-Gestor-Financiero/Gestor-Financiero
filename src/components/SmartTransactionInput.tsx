@@ -136,13 +136,13 @@ export default function SmartTransactionInput({ accounts, categories, investment
         const mentionedAccount=accounts.find(account=>normalize(spokenText).includes(normalize(account.nombre)));
         const defaultAccount=parsed.efectivo?accounts.find(account=>account.tipo==='Efectivo'):accounts.find(account=>account.tipo!=='Efectivo');
         const platform=parsed.categoria==='Inversion'?investmentPlatforms.find(item=>normalize(spokenText).includes(normalize(item))):undefined;
-        movement={fecha:parsed.fecha,categoria:parsed.categoria,monto:parsed.monto,motivo:parsed.motivo,moneda:currency,cotizacion:1,categoriaDetalle:platform||parsed.categoriaDetalle,cuentaOrigen:mentionedAccount?.id||defaultAccount?.id||''};
+        movement={fecha:parsed.fecha,categoria:parsed.categoria,monto:parsed.monto,motivo:parsed.motivo,moneda:currency,cotizacion:1,categoriaDetalle:platform||parsed.categoriaDetalle,...(platform?{investmentPlatform:platform}:{}),cuentaOrigen:mentionedAccount?.id||defaultAccount?.id||''};
       } catch { /* Cuando la IA no responde, se usa el análisis local. */ }
       if (!movement) {
         const monto=inferAmount(spokenText);if(!Number.isFinite(monto)||monto<=0)throw new Error('No pude reconocer el monto. Probá, por ejemplo: “hoy gasté 10 mil en Open25”.');
         const categoria=inferType(spokenText),cash=categoria==='Ef+'||categoria==='Ef-',mentionedAccount=accounts.find(account=>normalize(spokenText).includes(normalize(account.nombre))),defaultAccount=cash?accounts.find(account=>account.tipo==='Efectivo'):accounts.find(account=>account.tipo!=='Efectivo');
         const platform=categoria==='Inversion'?investmentPlatforms.find(item=>normalize(spokenText).includes(normalize(item))):undefined;
-        movement={fecha:inferDate(spokenText),categoria,monto,motivo:inferDetail(spokenText),moneda:currency,cotizacion:1,categoriaDetalle:platform||inferCategory(spokenText,categories),cuentaOrigen:mentionedAccount?.id||defaultAccount?.id||''};
+        movement={fecha:inferDate(spokenText),categoria,monto,motivo:inferDetail(spokenText),moneda:currency,cotizacion:1,categoriaDetalle:platform||inferCategory(spokenText,categories),...(platform?{investmentPlatform:platform}:{}),cuentaOrigen:mentionedAccount?.id||defaultAccount?.id||''};
       }
       await onAddTransaction(movement); setText('');
     }

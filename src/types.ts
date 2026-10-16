@@ -9,6 +9,8 @@ export interface Transaction {
   cotizacion?: number;
   motivo: string;
   categoriaDetalle?: string;
+  /** Plataforma o cuenta de inversión elegida al registrar el movimiento. */
+  investmentPlatform?: string;
   cuentaOrigen?: string;
   cuentaDestino?: string;
   createdAt: number;
