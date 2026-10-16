@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { User, deleteUser, onAuthStateChanged, sendPasswordResetEmail, signOut } from 'firebase/auth';
-import { addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, setDoc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { Download, Plus, ExternalLink, Link as LinkIcon, Trash2, X, Pencil, LayoutDashboard, ReceiptText, Target, CalendarDays, HandCoins, Settings, CircleHelp, LogOut } from 'lucide-react';
 import { auth, db } from './firebase';
 import { Account, Loan, FixedExpense, IolInvestmentSnapshot, MonthlyClosure, Transaction, UserSettings } from './types';
@@ -55,6 +55,7 @@ const writeCache = (key: string, value: unknown) => {
 };
 const userCacheKey = (uid:string, key:string) => `${key}:${uid}`;
 const SESSION_HINT_KEY = 'gefi:authenticated-session';
+const PENDING_MIGRATION_KEY = 'gefi:pending-account-migration';
 const GEFI_SERVICE_ENDPOINT='https://gefi-support.denislautaro6.workers.dev';
 const hasSessionHint = () => { try { const hint=localStorage.getItem(SESSION_HINT_KEY);if(hint!==null)return hint==='1';return Object.keys(localStorage).some(key=>/^gefi:(settings|transactions|accounts):/.test(key)); } catch { return false; } };
 const normalizeHttpUrl=(value:unknown)=>{try{const url=new URL(String(value||'').trim());return url.protocol==='http:'||url.protocol==='https:'?url.href:''}catch{return ''}};
@@ -73,6 +74,37 @@ const mergeCached = <T extends {id:string}>(remote:T[], cached:T[]) => {
  const map = new Map(cached.map(item=>[item.id,item]));
  remote.forEach(item=>map.set(item.id,item));
  return [...map.values()];
+};
+
+type PendingAccountMigration = {
+ sourceUid: string;
+ createdAt: number;
+ transactions: Transaction[];
+ accounts: Account[];
+ fixedExpenses: FixedExpense[];
+ loans: Loan[];
+ monthlyClosures: MonthlyClosure[];
+ settings: UserSettings;
+};
+const readPendingMigration = (): PendingAccountMigration | null => {
+ try {
+  const raw = localStorage.getItem(PENDING_MIGRATION_KEY);
+  if (!raw) return null;
+  const parsed = JSON.parse(raw) as Partial<PendingAccountMigration>;
+  if (!parsed.sourceUid || !Array.isArray(parsed.transactions) || !Array.isArray(parsed.accounts) || !Array.isArray(parsed.fixedExpenses) || !Array.isArray(parsed.loans) || !Array.isArray(parsed.monthlyClosures) || !parsed.settings) return null;
+  return parsed as PendingAccountMigration;
+ } catch { return null; }
+};
+const cloudId = (id: string) => id.replace(/^local-/, '') || crypto.randomUUID();
+const copyRecordsToUser = async <T extends {id:string}>(uid: string, collectionName: string, records: T[], enrich: (record:T, id:string) => Record<string,unknown> = (record,id) => ({...record,id})) => {
+ for (let start = 0; start < records.length; start += 400) {
+  const batch = writeBatch(db);
+  records.slice(start,start + 400).forEach(record => {
+   const id = cloudId(String(record.id));
+   batch.set(doc(db,'users',uid,collectionName,id), enrich(record,id));
+  });
+  await batch.commit();
+ }
 };
 
 type InvestmentBreakdownItem={name:string;value:number;source?:'manual'|'iol';initialInvestedArs?:number;totalGainArs?:number;totalGainPct?:number;dailyChangeArs?:number;dailyChangePct?:number;marketDate?:string;positions?:IolInvestmentSnapshot['positions']};
@@ -138,6 +170,7 @@ export default function App() {
  const [syncError,setSyncError]=useState('');
  const [cloudSynced,setCloudSynced]=useState(false);
  const syncSourcesRef=useRef<Record<'transactions'|'settings'|'accounts'|'fixedExpenses'|'loans',boolean>>({transactions:false,settings:false,accounts:false,fixedExpenses:false,loans:false});
+ const migrationInProgressRef=useRef(false);
  const [isOnline,setIsOnline]=useState(()=>navigator.onLine);
  const [transferMode,setTransferMode]=useState<'toAccount'|'toCash'|null>(null);
  const [investmentWithdrawalOpen,setInvestmentWithdrawalOpen]=useState(false);
@@ -155,7 +188,8 @@ export default function App() {
  useEffect(()=>{if(showSettings&&!settingsHistoryRef.current){window.history.pushState({...window.history.state,gefiOverlay:'settings'},'');settingsHistoryRef.current=true;return}if(!showSettings&&settingsHistoryRef.current&&window.history.state?.gefiOverlay==='settings')window.history.back()},[showSettings]);
  useEffect(()=>{const onPopState=(event:PopStateEvent)=>{const settingsState=event.state?.gefiOverlay==='settings';settingsHistoryRef.current=settingsState;setShowSettings(settingsState)};window.addEventListener('popstate',onPopState);return()=>window.removeEventListener('popstate',onPopState)},[]);
  const updateSyncSource=(source:keyof typeof syncSourcesRef.current,fromCache:boolean,hasPendingWrites:boolean)=>{syncSourcesRef.current[source]=!fromCache&&!hasPendingWrites;setCloudSynced(Object.values(syncSourcesRef.current).every(Boolean));};
- useEffect(()=>onAuthStateChanged(auth,u=>{setUser(u);setLoading(false);syncSourcesRef.current={transactions:false,settings:false,accounts:false,fixedExpenses:false,loans:false};setCloudSynced(false);if(!u){setTxs([]);setAccounts([]);setFixed([]);setLoans([]);setMonthlyClosures([]);setIolSnapshot(null);setSettings(defaults);return}try{localStorage.setItem(SESSION_HINT_KEY,'1')}catch{}setKnownSession(true);setExplicitLogout(false);setAllowMobileLogin(false);setTxs(readCache(userCacheKey(u.uid,'transactions'),[]));setAccounts(readCache(userCacheKey(u.uid,'accounts'),[]));setFixed(readCache(userCacheKey(u.uid,'fixedExpenses'),[]));setLoans(readCache(userCacheKey(u.uid,'loans'),[]));setIolSnapshot(readCache<IolInvestmentSnapshot|null>(userCacheKey(u.uid,'iolSnapshot'),null));setSettings(normalizeSettings(readCache<Partial<UserSettings>>(userCacheKey(u.uid,'settings'),{})));setDoc(doc(db,'users',u.uid),{email:u.email||null,displayName:u.displayName||null,updatedAt:Date.now()},{merge:true}).catch(()=>setSyncError('No se pudo conectar la cuenta con la nube. Verificá tu conexión e iniciá sesión nuevamente.'));}),[]);
+ const migratePendingData=async(target:User)=>{const migration=readPendingMigration();if(!migration||migration.sourceUid===target.uid||target.isAnonymous||migrationInProgressRef.current)return;migrationInProgressRef.current=true;setSyncError('Copiando tus datos del celular a esta cuenta…');try{await copyRecordsToUser(target.uid,'transactions',migration.transactions,(record,id)=>withoutUndefined({...record,id,uid:target.uid}) as Record<string,unknown>);await copyRecordsToUser(target.uid,'accounts',migration.accounts);await copyRecordsToUser(target.uid,'fixedExpenses',migration.fixedExpenses);await copyRecordsToUser(target.uid,'loans',migration.loans);await copyRecordsToUser(target.uid,'monthlyClosures',migration.monthlyClosures);await setDoc(doc(db,'users',target.uid,'settings','finance'),migration.settings);localStorage.removeItem(PENDING_MIGRATION_KEY);setSyncError('Tus datos del celular ya fueron copiados a esta cuenta.');}catch{setSyncError('No se pudo terminar la copia. Conservamos los datos originales en este celular: revisá tu conexión y volvé a iniciar sesión con esta cuenta.');}finally{migrationInProgressRef.current=false;}};
+ useEffect(()=>onAuthStateChanged(auth,u=>{setUser(u);setLoading(false);syncSourcesRef.current={transactions:false,settings:false,accounts:false,fixedExpenses:false,loans:false};setCloudSynced(false);if(!u){setTxs([]);setAccounts([]);setFixed([]);setLoans([]);setMonthlyClosures([]);setIolSnapshot(null);setSettings(defaults);return}try{localStorage.setItem(SESSION_HINT_KEY,'1')}catch{}setKnownSession(true);setExplicitLogout(false);setAllowMobileLogin(false);setTxs(readCache(userCacheKey(u.uid,'transactions'),[]));setAccounts(readCache(userCacheKey(u.uid,'accounts'),[]));setFixed(readCache(userCacheKey(u.uid,'fixedExpenses'),[]));setLoans(readCache(userCacheKey(u.uid,'loans'),[]));setIolSnapshot(readCache<IolInvestmentSnapshot|null>(userCacheKey(u.uid,'iolSnapshot'),null));setSettings(normalizeSettings(readCache<Partial<UserSettings>>(userCacheKey(u.uid,'settings'),{})));setDoc(doc(db,'users',u.uid),{email:u.email||null,displayName:u.displayName||null,updatedAt:Date.now()},{merge:true}).catch(()=>setSyncError('No se pudo conectar la cuenta con la nube. Verificá tu conexión e iniciá sesión nuevamente.'));void migratePendingData(u);}),[]);
  useEffect(()=>{if(loading||user){setAllowMobileLogin(false);return}if(explicitLogout){setAllowMobileLogin(true);return}setAllowMobileLogin(false);const timer=window.setTimeout(()=>setAllowMobileLogin(true),250);return()=>window.clearTimeout(timer)},[loading,user,explicitLogout,knownSession]);
  useEffect(()=>{ document.documentElement.classList.toggle('dark',settings.darkMode); },[settings.darkMode]);
  useEffect(()=>{const media=window.matchMedia('(prefers-reduced-motion: reduce)');const sync=()=>document.documentElement.classList.toggle('reduce-motion',media.matches);sync();media.addEventListener('change',sync);return()=>media.removeEventListener('change',sync)},[]);
@@ -183,6 +217,7 @@ export default function App() {
  const resetAllData=async()=>{if(!user)throw new Error('No hay una cuenta activa.');for(const name of ['transactions','accounts','fixedExpenses','loans']){const snapshot=await getDocs(collection(db,'users',user.uid,name));await Promise.all(snapshot.docs.map(item=>deleteDoc(item.ref)))}setTxs([]);setAccounts([]);setFixed([]);setLoans([]);setIolSnapshot(null);await saveSettings({...defaults,onboardingCompleted:true});};
  const clearSessionHint=()=>{try{localStorage.setItem(SESSION_HINT_KEY,'0')}catch{}setKnownSession(false);setExplicitLogout(true);setAllowMobileLogin(true)};
  const logout=()=>{clearSessionHint();void signOut(auth)};
+ const beginAccountMigration=async()=>{if(!user?.isAnonymous)throw new Error('Esta cuenta ya está vinculada. Iniciá sesión con la misma cuenta en ambos dispositivos.');const migration:PendingAccountMigration={sourceUid:user.uid,createdAt:Date.now(),transactions:txs,accounts,fixedExpenses:fixed,loans,monthlyClosures,settings};try{localStorage.setItem(PENDING_MIGRATION_KEY,JSON.stringify(migration));}catch{throw new Error('No pudimos preparar la copia local. Liberá espacio en el dispositivo e intentá nuevamente.');}clearSessionHint();await signOut(auth);};
  const removeAccount=async()=>{if(!user)throw new Error('No hay una cuenta activa.');await resetAllData();await deleteDoc(doc(db,'users',user.uid)).catch(()=>undefined);clearSessionHint();await deleteUser(user);};
  const completeTutorial=()=>{setShowTutorial(false);if(settings.currencySetupCompleted===false)setShowCurrencySetup(true);void saveSettings({...settings,onboardingCompleted:true})};
  const saveQuickLinkEdit=()=>{if(!quickLinkEdit)return;const url=normalizeHttpUrl(quickLinkEdit.url);if(!url){setQuickLinkEditError('Ingresá una URL válida que comience con http:// o https://.');return}saveSettings({...settings,quickLinks:settings.quickLinks.map(x=>x.id===quickLinkEdit.id?{...x,nombre:quickLinkEdit.nombre.trim().slice(0,100),url}:x)});setQuickLinkEdit(null);setQuickLinkEditError('')};
@@ -257,7 +292,7 @@ export default function App() {
  const monthName=new Intl.DateTimeFormat(settings.language==='en'?'en-US':'es-AR',{month:'long'}).format(new Date(year,month,1)).toUpperCase();
  const summaryPrefix=settings.language==='en'?'SUMMARY FOR':'RESUMEN DE';
  const displayName=(user.displayName||user.email?.split('@')[0]||'usuario').trim().split(/\s+/).slice(0,2).join(' ');
- if(useMobileConcept)return <><MobileConcept userName={user.displayName||user.email?.split('@')[0]||'Usuario'} userEmail={user.email||''} userPhotoURL={user.photoURL||undefined} summary={summary} transactions={active} historyTransactions={currentTxs} accounts={accounts} loans={groupedLoans.flat()} investmentBreakdown={investmentBreakdown} settings={settings} onAddTransaction={addTx} onDeleteTransaction={deleteTx} onEditTransaction={editTx} onAddAccount={addAccount} onDeleteAccount={deleteAccount} onSaveSettings={saveSettings} onRepayLoan={repayLoan} onAddLoan={addLoan} onRepayPerson={repayPerson} onWithdrawInvestment={withdrawInvestment} onClearInvestmentBalance={clearInvestmentBalance} onCorrectBalance={correctBalance} onExport={exportAll} onResetPassword={()=>user.email?sendPasswordResetEmail(auth,user.email):Promise.resolve()} onResetData={resetAllData} onDeleteUserAccount={removeAccount} onLogout={logout} onOpenSupport={()=>setShowSupport(true)}/><SupportModal open={showSupport} onClose={()=>setShowSupport(false)} initialName={user.displayName} initialEmail={user.email} language={settings.language||'es'} source="mobile-app"/></>;
+ if(useMobileConcept)return <><MobileConcept userName={user.displayName||user.email?.split('@')[0]||'Usuario'} userEmail={user.email||''} userPhotoURL={user.photoURL||undefined} isAnonymousUser={user.isAnonymous} summary={summary} transactions={active} historyTransactions={currentTxs} accounts={accounts} loans={groupedLoans.flat()} investmentBreakdown={investmentBreakdown} settings={settings} onAddTransaction={addTx} onDeleteTransaction={deleteTx} onEditTransaction={editTx} onAddAccount={addAccount} onDeleteAccount={deleteAccount} onSaveSettings={saveSettings} onRepayLoan={repayLoan} onAddLoan={addLoan} onRepayPerson={repayPerson} onWithdrawInvestment={withdrawInvestment} onClearInvestmentBalance={clearInvestmentBalance} onCorrectBalance={correctBalance} onExport={exportAll} onMigrateToAccount={beginAccountMigration} onResetPassword={()=>user.email?sendPasswordResetEmail(auth,user.email):Promise.resolve()} onResetData={resetAllData} onDeleteUserAccount={removeAccount} onLogout={logout} onOpenSupport={()=>setShowSupport(true)}/><SupportModal open={showSupport} onClose={()=>setShowSupport(false)} initialName={user.displayName} initialEmail={user.email} language={settings.language||'es'} source="mobile-app"/></>;
   return <div className="gefi-shell min-h-[100dvh] overflow-x-hidden text-slate-800 dark:text-slate-100"><DesktopSidebar userName={displayName} onSettings={()=>setShowSettings(true)} onHelp={()=>setShowHelp(true)} onLogout={logout}/><div className="gefi-desktop-workspace"><Header user={user} selectedMonth={month} selectedYear={year} onMonthChange={setMonth} onYearChange={setYear} onLogout={logout} darkMode={settings.darkMode} onToggleDarkMode={()=>saveSettings({...settings,darkMode:!settings.darkMode})} hideBalances={settings.hideBalances} onToggleHideBalances={()=>saveSettings({...settings,hideBalances:!settings.hideBalances})} onOpenSettings={()=>setShowSettings(true)} onOpenAccount={()=>setShowAccount(true)}/><main className="gefi-main mx-auto max-w-7xl px-3 sm:px-6">
  <div id="gefi-overview" className="gefi-welcome mb-4 flex flex-col gap-4 rounded-2xl p-4 text-white sm:mb-5 sm:flex-row sm:items-end sm:justify-between sm:p-6"><div className="relative z-10 min-w-0"><p className="gefi-eyebrow">{summaryPrefix} {monthName} {year}</p><h2 className="break-words text-xl font-semibold tracking-tight sm:text-3xl">{greeting}, {displayName}.</h2><p className="gefi-welcome-copy">Tu posición financiera, movimientos y planificación en una sola vista.</p></div><div className="gefi-welcome-actions"><span className={isOnline&&cloudSynced&&!syncError?'online':'offline'}><i/>{isOnline&&cloudSynced&&!syncError?'Datos sincronizados':isOnline?'Sincronizando datos':'Modo sin conexión'}</span><button onClick={()=>setShowInsights(true)}>Abrir análisis</button></div></div>
  {syncError&&<div role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">{syncError}</div>}

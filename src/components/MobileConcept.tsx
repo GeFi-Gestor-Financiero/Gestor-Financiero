@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, CircleDollarSign, HandCoins, Home, Landmark, LineChart,
   Plus, Search, ShieldCheck, SlidersHorizontal, Target,
   UserRound, WalletCards, Trash2, Check, X, EyeOff, Moon, Sun,
-  LogOut, Download, Globe2, CircleHelp, Mail, Sparkles, KeyRound, FileText, Pencil, BellRing,
+  LogOut, Download, Globe2, CircleHelp, Mail, Sparkles, KeyRound, FileText, Pencil, BellRing, Cloud,
 } from 'lucide-react';
 import { Account, Loan, Transaction, UserSettings } from '../types';
 import SmartTransactionInput from './SmartTransactionInput';
@@ -21,6 +21,7 @@ type MobileConceptProps = {
   userName: string;
   userEmail: string;
   userPhotoURL?: string;
+  isAnonymousUser: boolean;
   summary: { patrimonio: number; accounts: number; accountsTotal: number; reserved: number; cash: number; investment: number; income: number; expense: number };
   transactions: Transaction[];
   historyTransactions: Transaction[];
@@ -41,6 +42,7 @@ type MobileConceptProps = {
   onClearInvestmentBalance: (platform: string) => Promise<void>;
   onCorrectBalance: (kind: 'accounts'|'cash'|'patrimony'|'investment', target: number) => Promise<void>;
   onExport: () => void;
+  onMigrateToAccount: () => Promise<void>;
   onResetPassword: () => Promise<void>;
   onResetData: () => Promise<void>;
   onDeleteUserAccount: () => Promise<void>;
@@ -298,7 +300,7 @@ function PlanScreen({ settings, summary, transactions, historyTransactions, onSa
   </main>;
 }
 
-function ProfileScreen({ userName, userEmail, userPhotoURL, settings, accounts, summary, onSaveSettings, onExport, onLogout, onAddAccount, onDeleteAccount, onCorrectBalance, onResetPassword, onResetData, onDeleteUserAccount, onOpenSupport }:Pick<MobileConceptProps,'userName'|'userEmail'|'userPhotoURL'|'settings'|'accounts'|'summary'|'onSaveSettings'|'onExport'|'onLogout'|'onAddAccount'|'onDeleteAccount'|'onCorrectBalance'|'onResetPassword'|'onResetData'|'onDeleteUserAccount'|'onOpenSupport'>) {
+function ProfileScreen({ userName, userEmail, userPhotoURL, isAnonymousUser, settings, accounts, summary, onSaveSettings, onExport, onMigrateToAccount, onLogout, onAddAccount, onDeleteAccount, onCorrectBalance, onResetPassword, onResetData, onDeleteUserAccount, onOpenSupport }:Pick<MobileConceptProps,'userName'|'userEmail'|'userPhotoURL'|'isAnonymousUser'|'settings'|'accounts'|'summary'|'onSaveSettings'|'onExport'|'onMigrateToAccount'|'onLogout'|'onAddAccount'|'onDeleteAccount'|'onCorrectBalance'|'onResetPassword'|'onResetData'|'onDeleteUserAccount'|'onOpenSupport'>) {
   const [panel,setPanel]=useState<'account'|'accounts'|'correction'|'help'|'policies'|null>(null);
   const [showAccountForm,setShowAccountForm]=useState(false);
   const [accountDraft,setAccountDraft]=useState<{nombre:string;tipo:Account['tipo'];saldoInicial:string}>({nombre:'',tipo:'Banco',saldoInicial:'0'});
@@ -372,6 +374,7 @@ function ProfileScreen({ userName, userEmail, userPhotoURL, settings, accounts, 
         <button onClick={onExport}><span className="mc-setting-icon"><Download size={18}/></span><div><strong>Descargar respaldo</strong><small>Guardá una copia de tus datos</small></div><ChevronRight size={18}/></button>
       </div>
     </section>
+    {isAnonymousUser&&<section className="mc-profile-group" aria-labelledby="mc-profile-sync"><h2 id="mc-profile-sync" className="mc-settings-heading">Sincronizar con la web</h2><div className="mc-settings-modern"><button onClick={()=>{if(confirm('Vamos a conservar una copia en este celular y luego te vamos a pedir que ingreses con la misma cuenta que usás en la web. ¿Continuar?'))void onMigrateToAccount()}}><span className="mc-setting-icon"><Cloud size={18}/></span><div><strong>Pasar mis datos a mi cuenta</strong><small>Copiá este historial a la cuenta que usás en la web</small></div><ChevronRight size={18}/></button></div></section>}
     <section className="mc-profile-group" aria-labelledby="mc-profile-help">
       <h2 id="mc-profile-help" className="mc-settings-heading">Ayuda y privacidad</h2>
       <div className="mc-settings-modern ">
